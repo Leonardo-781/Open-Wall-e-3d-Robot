@@ -56,25 +56,7 @@ Controle por rádio 2.4 GHz, *failsafe*, *mixing* de tanque, e arquitetura elét
 ## 📂 Estrutura do repositório
 ```
 
-.
-├─ firmware/
-│  └─ mega\_rx/mega\_rx.ino
-├─ docs/
-│  ├─ img/walle.jpg
-│  ├─ wiring.md
-│  ├─ power.md
-│  ├─ assembly.md
-│  ├─ protocol.md
-│  ├─ testing.md
-│  ├─ safety.md
-│  └─ faq.md
-├─ stl/              # coloque aqui apenas STLs AUTORAIS/DERIVADOS SE A LICENÇA PERMITIR
-├─ platformio.ini
-├─ CREDITS.md
-├─ CONTRIBUTING.md
-├─ CHANGELOG.md
-├─ LICENSE
-└─ README.md
+
 
 ````
 
