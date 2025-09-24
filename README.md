@@ -201,12 +201,6 @@ Este projeto (código, documentação e peças **derivadas autorais**) está sob
 
 ````
 
----
-
-### `CREDITS.md` (opcional)
-
-```markdown
-# Créditos
 
 - **Modelo 3D base**: WALL·E no Thingiverse — https://www.thingiverse.com/thing:3703555#google_vignette  
   - Direitos e licença do modelo 3D pertencem ao respectivo **criador original** no Thingiverse.
