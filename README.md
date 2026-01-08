@@ -4,13 +4,14 @@
 ### `README.md` (atualizado)
 
 ```markdown
-# WALL·E 3D — Robô com Arduino Mega + nRF24L01 (Tank drive + 7 servos)
+# WALL·E 3D — Robô com ESP32 (Controle WiFi + Tank drive + 7 servos)
 
 ![WALL·E](docs/img/walle.jpg)
 
-Robô WALL·E impresso em 3D com **Arduino Mega 2560**, **nRF24L01+** (qualquer TX compatível),
-**ponte H L298N** para duas esteiras (motores DC), e **7× servos SG90** (cabeça, olhos, braços).
-Controle por rádio 2.4 GHz, *failsafe*, *mixing* de tanque, e arquitetura elétrica segura com **LM2596**.
+Robô WALL·E impresso em 3D com **ESP32** (WiFi integrado),
+**ponte H L298N** para duas esteiras (motores DC), **7× servos SG90** (cabeça, olhos, braços),
+**display OLED 0.96"** e **auto-falante** para feedback sonoro.
+Controle via **interface web** responsiva e moderna, com watchdog de segurança.
 
 > ⚠️ **Segurança**: uso educacional. Teste primeiro sem carga e **SEM hélices/partes soltas**.
 > Desconecte a bateria antes de mexer na fiação. LiPo exige atenção (veja `docs/safety.md`).
@@ -31,11 +32,14 @@ Controle por rádio 2.4 GHz, *failsafe*, *mixing* de tanque, e arquitetura elét
 ---
 
 ## ✨ Destaques
-- Compatível com **qualquer transmissor** baseado em nRF24 (endereço/payload combinam).
-- Direção **tank** (diferencial) com *mixing* e limite de PWM.
-- **7 DOF** com SG90 (PAN/TILT cabeça, olhos, braços).
-- **Failsafe** por *watchdog* de pacote: sem RF = motores param e servos neutros.
-- Estrutura elétrica robusta: **LM2596** isolando lógica/servos dos motores (L298N).
+- **ESP32 Unificado**: Uma única placa controla tudo (WiFi + servos + motores)
+- **Interface Web Moderna**: Controle completo via navegador com joystick virtual
+- **Display OLED 0.96"**: Status em tempo real (velocidade, modo, conexões)
+- **Auto-falante**: Feedback sonoro para ações e alertas
+- Direção **tank** (diferencial) com controle de velocidade variável
+- **7 servos** com SG90 (cabeça, olhos, braços)
+- **Watchdog de segurança**: Sem comando = motores param automaticamente
+- **Modo Turbo**: Alterna entre velocidade normal e máxima
 
 ---
 
@@ -66,38 +70,53 @@ Controle por rádio 2.4 GHz, *failsafe*, *mixing* de tanque, e arquitetura elét
 
 | Qtde | Item                                      | Notas |
 |----:|-------------------------------------------|------|
-| 1   | **Arduino Mega 2560**                     | MCU principal |
-| 1   | **nRF24L01+** (ideal PA/LNA + antena)     | Rádio 2.4 GHz; capacitor 10–47 µF no VCC |
-| 1   | **LM2596** (buck 4–40 V→5.0–5.3 V ≥3 A)   | Lógica + servos |
-| 1   | **L298N**                                  | 2 canais DC para esteiras |
+| 1   | **ESP32 DevKit**                          | MCU principal com WiFi integrado |
+| 1   | **Display OLED SSD1306 0.96" I2C**       | Feedback visual em tempo real |
+| 1   | **Auto-falante 8Ω 0.5W**                  | Feedback sonoro (ou buzzer piezo) |
+| 1   | **L298N**                                  | Ponte H para 2 motores DC |
 | 2   | Motor DC alto torque/baixa rotação         | Esteiras |
-| 7   | **Servo SG90 9g**                          | Cabeça/olhos/braços/punhos |
-| 1   | Shield/protoboard para Mega                | Solda/organização |
-| 1   | Bateria (LiPo 2S/3S ou pack 7–12 V)        | Motores + LM2596 |
-| n   | Fios, terminais, parafusos, dissipadores   | Montagem |
-| n   | **Capacitores**: 10–47 µF (nRF), 470–1000 µF (barramento 5 V) | Estabilidade |
+| 7   | **Servo SG90 9g**                          | Cabeça/olhos/braços |
+| 1   | Bateria (LiPo 2S/3S ou pack 7–12 V)        | Alimentação geral |
+| 1   | Conversor Buck 5V (opcional)               | Para alimentar ESP32 e servos |
+| n   | Fios, terminais, parafusos                 | Montagem |
+| n   | **Capacitores**: 470–1000 µF (barramento 5 V) | Estabilidade dos servos |
 
 > Detalhes de corrente/queda de tensão/autonomia: `docs/power.md`.
 
 ---
 
-## 🔌 Pinout (Arduino Mega)
+## 🔌 Pinout (ESP32)
 
-### nRF24L01+
-- CE → **D48**
-- CSN (CS) → **D49**
-- **SCK=52**, **MOSI=51**, **MISO=50** (SPI HW do Mega)
-- IRQ → D2 (opcional)
-- VCC **3.3 V** (NÃO 5 V) + **10–47 µF** próximo ao módulo
-- GND comum
+### Servos (7 unidades)
+- Servo 0 (Braço Esquerdo) → **GPIO 13**
+- Servo 1 (Braço Direito) → **GPIO 12**
+- Servo 2 (Pescoço Base) → **GPIO 14**
+- Servo 3 (Pescoço Inclinação) → **GPIO 27**
+- Servo 4 (Rotação Cabeça) → **GPIO 26**
+- Servo 5 (Olho Esquerdo) → **GPIO 25**
+- Servo 6 (Olho Direito) → **GPIO 33**
 
-### L298N (tanque)
-- ENA (PWM) → **D5**
-- IN1 → **D30**
-- IN2 → **D31**
-- IN3 → **D32**
-- IN4 → **D33**
-- ENB (PWM) → **D6**
+### L298N (Ponte H - Motores)
+- Motor Esquerdo:
+  - IN1 → **GPIO 19**
+  - IN2 → **GPIO 18**
+  - ENA (PWM) → **GPIO 5**
+- Motor Direito:
+  - IN3 → **GPIO 17**
+  - IN4 → **GPIO 16**
+  - ENB (PWM) → **GPIO 4**
+
+### Display OLED (I2C)
+- SDA → **GPIO 21**
+- SCL → **GPIO 22**
+- Endereço: **0x3C**
+
+### Auto-falante
+- Speaker+ → **GPIO 23** (via transistor/amplificador)
+- Speaker- → GND
+
+### LED Status
+- LED onboard → **GPIO 2**
 - VMOT → **Bateria 7–12 V**
 - 5V lógica → **LM2596 (5 V)** *(remover/ignorar 5V-jumper interno)*
 - GND → **comum**

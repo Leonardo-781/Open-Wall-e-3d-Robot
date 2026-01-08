@@ -17,27 +17,27 @@
 // PIN DEFINITIONS
 // ============================================================
 
-// Servo Pins (PWM capable pins on Mega2560)
+// Servo Pins (Analog pins A0-A6, or use A7 for 8th servo)
 const int SERVO_PINS[8] = {
-  22,  // Servo 0: Left Arm
-  23,  // Servo 1: Right Arm
-  24,  // Servo 2: Neck Base (Rotation)
-  25,  // Servo 3: Neck Tilt (Up/Down)
-  26,  // Servo 4: Head Rotation
-  27,  // Servo 5: Left Eye
-  28,  // Servo 6: Right Eye
-  29   // Servo 7: Jaw/Mouth
+  A0,  // Servo 0: Left Arm
+  A1,  // Servo 1: Right Arm
+  A2,  // Servo 2: Neck Base (Rotation)
+  A3,  // Servo 3: Neck Tilt (Up/Down)
+  A4,  // Servo 4: Head Rotation
+  A5,  // Servo 5: Left Eye
+  A6,  // Servo 6: Right Eye
+  A7   // Servo 7: Jaw/Mouth
 };
 
 // Motor Control Pins - L298N Motor Driver
 // Left Motor
-const int LEFT_MOTOR_PIN1 = 30;   // Forward
-const int LEFT_MOTOR_PIN2 = 31;   // Backward
+const int LEFT_MOTOR_PIN1 = 8;    // Forward
+const int LEFT_MOTOR_PIN2 = 9;    // Backward
 const int LEFT_MOTOR_PWM = 3;     // PWM speed control (Timer2)
 
 // Right Motor
-const int RIGHT_MOTOR_PIN1 = 32;  // Forward
-const int RIGHT_MOTOR_PIN2 = 33;  // Backward
+const int RIGHT_MOTOR_PIN1 = 10;  // Forward
+const int RIGHT_MOTOR_PIN2 = 11;  // Backward
 const int RIGHT_MOTOR_PWM = 5;    // PWM speed control (Timer3)
 
 // Audio Output
