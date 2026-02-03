@@ -17,12 +17,10 @@ Controle via **interface web** responsiva e moderna, com watchdog de segurança.
 
 ## 📸 Fotos do projeto
 
-![WALL·E - Vista 1](Fotos%20Wall-e/IMG_20230905_143028.jpg)
-![WALL·E - Vista 2](Fotos%20Wall-e/IMG_20231005_170400.jpg)
-![WALL·E - Vista 3](Fotos%20Wall-e/IMG_20250610_082019.jpg)
-![WALL·E - Vista 4](Fotos%20Wall-e/IMG_20250610_082500.jpg)
-![WALL·E - Vista 5](Fotos%20Wall-e/IMG_20250627_081030.jpg)
-![WALL·E - Vista 6](Fotos%20Wall-e/IMG_20251111_131129.jpg)
+| Vista 1 | Vista 2 | Vista 3 |
+|---|---|---|
+| ![WALL·E - Vista 1](Fotos%20Wall-e/IMG_20230905_143028.jpg) | ![WALL·E - Vista 2](Fotos%20Wall-e/IMG_20231005_170400.jpg) | ![WALL·E - Vista 3](Fotos%20Wall-e/IMG_20250610_082019.jpg) |
+| ![WALL·E - Vista 4](Fotos%20Wall-e/IMG_20250610_082500.jpg) | ![WALL·E - Vista 5](Fotos%20Wall-e/IMG_20250627_081030.jpg) | ![WALL·E - Vista 6](Fotos%20Wall-e/IMG_20251111_131129.jpg) |
 
 > ⚠️ **Segurança**: uso educacional. Teste primeiro sem carga e **SEM hélices/partes soltas**.
 > Desconecte a bateria antes de mexer na fiação. LiPo exige atenção (veja `docs/safety.md`).
