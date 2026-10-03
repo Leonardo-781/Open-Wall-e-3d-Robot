@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>WALL-E AI Controller</title>
+  <style>
+    * { box-sizing: border-box; touch-action: manipulation; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 10px; max-width: 600px; margin: 0 auto; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; background: #f59e0b; color: #000; padding: 10px 14px; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
+    .badges { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    .badge-ok { background: #059669; color: #fff; }
+    .badge-off { background: #dc2626; color: #fff; }
+
+    /* VIDEO STREAM */
+    .stream-container { position: relative; width: 100%; border-radius: 8px; overflow: hidden; background: #000; margin-bottom: 10px; border: 2px solid #334155; }
+    .stream-container img { width: 100%; height: auto; display: block; }
+    .stream-overlay { position: absolute; bottom: 8px; left: 8px; font-size: 11px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
+
+    /* CARDS */
+    .card { background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid #334155; }
+    .card h3 { font-size: 14px; color: #f59e0b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* D-PAD MOTORES */
+    .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 220px; margin: 0 auto; }
+    .dpad button { height: 60px; font-size: 24px; font-weight: bold; border: none; border-radius: 8px; background: #3b82f6; color: #fff; cursor: pointer; }
+    .dpad button:active { background: #60a5fa; }
+    .dpad .btn-stop { background: #ef4444; font-size: 16px; }
+
+    /* BOTÃO RASTREAMENTO IA */
+    .btn-ai { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .ai-off { background: #334155; color: #94a3b8; }
+    .ai-on { background: #10b981; color: #000; box-shadow: 0 0 14px rgba(16, 185, 129, 0.6); }
+
+    /* GRIDS DE BOTÕES */
+    .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .btn-grid button { padding: 10px; border: none; border-radius: 6px; background: #0284c7; color: #fff; font-weight: bold; font-size: 12px; cursor: pointer; }
+    .btn-grid button:active { background: #38bdf8; color: #000; }
+
+    /* SLIDERS */
+    .slider-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; }
+    .slider-row label { width: 100px; color: #94a3b8; }
+    .slider-row input { flex: 1; accent-color: #f59e0b; }
+    .slider-row span { width: 35px; text-align: right; font-weight: bold; color: #f59e0b; }
+
+    /* SELETOR DE POTÊNCIA */
+    .btn-pwr { flex: 1; padding: 8px 4px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #94a3b8; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .active-pwr { background: #f59e0b; color: #000; border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+
+    /* BOTÃO DESLIGAR */
+    .btn-poweroff { width: 100%; padding: 10px; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; margin-top: 5px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>🤖 WALL-E AI SYSTEM</div>
+    <div class="badges">
+      <span id="nanoBadge" class="badge badge-off">NANO OFF</span>
+      <span id="bat">🔋 -- V</span>
+    </div>
+  </header>
+
+  <!-- TRANSMISSÃO DE VÍDEO DA CÂMERA -->
+  <div class="stream-container">
+    <img src="/video_feed" alt="Transmissão ao vivo">
+    <div class="stream-overlay" id="fpsInfo">FPS: --</div>
+  </div>
+
+  <!-- INTELIGÊNCIA ARTIFICIAL: RASTREAMENTO FACIAL -->
+  <div class="card">
+    <h3>Visão Computacional</h3>
+    <button id="aiBtn" class="btn-ai ai-off" onclick="toggleTracking()">
+      👁️ Rastreamento de Rosto: DESATIVADO
+    </button>
+  </div>
+
+  <!-- CONTROLE DE TRAÇÃO (MOTORES) -->
+  <div class="card">
+    <h3>Controle de Movimento (Tração DC)</h3>
+    <div style="display:flex; justify-content:center; gap:8px; margin-bottom:12px;">
+      <button id="pwr100" class="btn-pwr active-pwr" onclick="setPower(255, this)">⚡ 100% FORÇA TOTAL</button>
+      <button id="pwr80" class="btn-pwr" onclick="setPower(205, this)">⚙️ 80% MÉDIO</button>
+      <button id="pwr60" class="btn-pwr" onclick="setPower(155, this)">🎯 60% PRECISO</button>
+    </div>
+    <div class="dpad">
+      <div></div>
+      <button onpointerdown="driveCmd(1,1)" onpointerup="sendDrive(0,0)">▲</button>
+      <div></div>
+      <button onpointerdown="driveCmd(-1,1)" onpointerup="sendDrive(0,0)">◄</button>
+      <button class="btn-stop" onclick="sendStop()">■</button>
+      <button onpointerdown="driveCmd(1,-1)" onpointerup="sendDrive(0,0)">►</button>
+      <div></div>
+      <button onpointerdown="driveCmd(-1,-1)" onpointerup="sendDrive(0,0)">▼</button>
+      <div></div>
+    </div>
+  </div>
+
+  <!-- EXPRESSÕES DOS OLHOS NO OLED -->
+  <div class="card">
+    <h3>Expressões (Display OLED)</h3>
+    <div class="btn-grid">
+      <button onclick="sendExpr(0)">Normal</button>
+      <button onclick="sendExpr(1)">Curioso</button>
+      <button onclick="sendExpr(2)">Piscar</button>
+      <button onclick="sendExpr(3)">Triste</button>
+      <button onclick="sendExpr(4)">Bravo</button>
+      <button onclick="sendStop()" style="background:#ef4444">Parar</button>
+    </div>
+  </div>
+
+  <!-- CONTROLE MANUAL DOS 7 SERVOS (DIRETO NO NANO SHIELD) -->
+  <div class="card">
+    <h3>Controle dos 7 Servos (Nano Shield)</h3>
+    <div class="slider-row">
+      <label>0. Olho Esq (D8)</label>
+      <input type="range" min="0" max="180" value="90" oninput="sendServo(0, this.value); val0.innerText=this.value">
+      <span id="val0">90</span>
+    </div>
+    <div class="slider-row">
+      <label>1. Olho Dir (D9)</label>
+      <input type="range" min="0" max="180" value="90" oninput="sendServo(1, this.value); val1.innerText=this.value">
+      <span id="val1">90</span>
+    </div>
+    <div class="slider-row">
+      <label>2. Pesc Pan (A1)</label>
+      <input type="range" min="0" max="180" value="90" id="sliderPan" oninput="sendServo(2, this.value); val2.innerText=this.value">
+      <span id="val2">90</span>
+    </div>
+    <div class="slider-row">
+      <label>3. Pesc Tilt (A2)</label>
+      <input type="range" min="0" max="180" value="90" id="sliderTilt" oninput="sendServo(3, this.value); val3.innerText=this.value">
+      <span id="val3">90</span>
+    </div>
+    <div class="slider-row">
+      <label>4. Pesc Roll (A3)</label>
+      <input type="range" min="0" max="180" value="90" oninput="sendServo(4, this.value); val4.innerText=this.value">
+      <span id="val4">90</span>
+    </div>
+    <div class="slider-row">
+      <label>5. Braço Esq (D10)</label>
+      <input type="range" min="0" max="180" value="90" oninput="sendServo(5, this.value); val5.innerText=this.value">
+      <span id="val5">90</span>
+    </div>
+    <div class="slider-row">
+      <label>6. Braço Dir (D11)</label>
+      <input type="range" min="0" max="180" value="90" oninput="sendServo(6, this.value); val6.innerText=this.value">
+      <span id="val6">90</span>
+    </div>
+  </div>
+
+  <!-- SISTEMA & ENERGIA -->
+  <div class="card">
+    <h3>Gerenciamento de Energia</h3>
+    <button class="btn-poweroff" onclick="powerOff()">🛑 Desligar Raspberry Pi com Segurança</button>
+  </div>
+
+  <script>
+    let currentPower = 255;
+    function setPower(val, btn) {
+      currentPower = val;
+      document.querySelectorAll('.btn-pwr').forEach(b => b.classList.remove('active-pwr'));
+      btn.classList.add('active-pwr');
+    }
+    function driveCmd(dirL, dirR) {
+      sendDrive(dirL * currentPower, dirR * currentPower);
+    }
+
+    function sendDrive(l, r) { fetch(`/drive?l=${l}&r=${r}`); }
+    function sendServo(id, ang) { fetch(`/servo?id=${id}&ang=${ang}`); }
+    function sendExpr(id) { fetch(`/expr?id=${id}`); }
+    function sendStop() { fetch('/stop'); }
+
+    function toggleTracking() {
+      fetch('/toggle_tracking')
+        .then(r => r.json())
+        .then(data => updateTrackingBtn(data.tracking));
+    }
+
+    function updateTrackingBtn(active) {
+      const btn = document.getElementById('aiBtn');
+      if (active) {
+        btn.className = 'btn-ai ai-on';
+        btn.innerText = '👁️ Rastreamento de Rosto: ATIVO';
+      } else {
+        btn.className = 'btn-ai ai-off';
+        btn.innerText = '👁️ Rastreamento de Rosto: DESATIVADO';
+      }
+    }
+
+    function powerOff() {
+      if (confirm('Deseja realmente desligar o Raspberry Pi com segurança antes de remover a bateria?')) {
+        fetch('/poweroff', { method: 'POST' });
+        alert('O robô está desligando o sistema com segurança. Aguarde 10 segundos antes de retirar a alimentação.');
+      }
+    }
+
+    // Telemetria em tempo real
+    setInterval(() => {
+      fetch('/telemetry')
+        .then(r => r.json())
+        .then(data => {
+          if (data.battery !== undefined) {
+            document.getElementById('bat').innerText = `🔋 ${data.battery.toFixed(1)} V`;
+          }
+          const badge = document.getElementById('nanoBadge');
+          if (data.nano_connected) {
+            badge.className = 'badge badge-ok';
+            badge.innerText = 'NANO OK';
+          } else {
+            badge.className = 'badge badge-off';
+            badge.innerText = 'NANO OFF';
+          }
+          if (data.fps !== undefined) {
+            document.getElementById('fpsInfo').innerText = `FPS: ${data.fps.toFixed(1)}`;
+          }
+          // Sincroniza sliders de Pan/Tilt se rastreamento estiver ativo
+          if (data.face_tracking) {
+            document.getElementById('sliderPan').value = data.pan;
+            document.getElementById('val2').innerText = data.pan;
+            document.getElementById('sliderTilt').value = data.tilt;
+            document.getElementById('val3').innerText = data.tilt;
+          }
+        })
+        .catch(() => {});
+    }, 1200);
+  </script>
+</body>
+</html>
