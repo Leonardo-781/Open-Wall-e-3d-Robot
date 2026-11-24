@@ -1351,7 +1351,9 @@ def generate_stream():
 
 @app.route("/video_feed")
 def video_feed():
-    return Response(generate_stream(), mimetype="multipart/x-mixed-replace; boundary=frame")
+    resp = Response(generate_stream(), mimetype="multipart/x-mixed-replace; boundary=frame")
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    return resp
 
 
 @app.route("/drive")

@@ -41,8 +41,12 @@
     .reticle-line-v { position: absolute; left: 31px; top: -24px; bottom: -24px; width: 2px; background: rgba(245, 158, 11, 0.4); }
 
     /* FLASH DE CAPTURA DE FOTO */
-    .photo-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; opacity: 0; pointer-events: none; z-index: 20; transition: opacity 0.05s ease-in; }
-    .photo-flash.active { opacity: 0.95; transition: none; }
+    @keyframes flashFade {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+    .photo-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; opacity: 0; pointer-events: none; z-index: 25; }
+    .photo-flash.active { animation: flashFade 0.28s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
 
     /* BARRA SUPERIOR DE AÇÃO DE CÂMERA */
     .cam-action-bar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
@@ -158,7 +162,7 @@
 
   <!-- TRANSMISSÃO DE VÍDEO DA CÂMERA & OVERLAYS -->
   <div class="stream-container">
-    <img id="camFeed" src="/video_feed" alt="Transmissão ao vivo">
+    <img id="camFeed" src="/video_feed" alt="Transmissão ao vivo" crossorigin="anonymous">
     <div id="photoFlash" class="photo-flash"></div>
     <div id="reticleLayer" class="reticle-layer">
       <div class="reticle-circle">
@@ -759,30 +763,167 @@
     window.addEventListener('blur', () => { stopDrive(); endJoyDrag(); });
 
     // =========================================================================
-    // 2. CAPTURA DE FOTOS HD & FILTROS VISUAIS
+    // 2. CAPTURA DE FOTOS INSTANTÂNEA NO NAVEGADOR (OFFLINE & RESOLUÇÃO NATIVA)
     // =========================================================================
+    function playCameraShutterSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        // Clique 1 do obturador mecânico
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.035);
+        gain1.gain.setValueAtTime(0.6, audioCtx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.035);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start();
+        osc1.stop(audioCtx.currentTime + 0.035);
+
+        // Clique 2 (retorno mecânico do obturador)
+        setTimeout(() => {
+          const osc2 = audioCtx.createOscillator();
+          const gain2 = audioCtx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(650, audioCtx.currentTime);
+          osc2.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.045);
+          gain2.gain.setValueAtTime(0.45, audioCtx.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.045);
+          osc2.connect(gain2);
+          gain2.connect(audioCtx.destination);
+          osc2.start();
+          osc2.stop(audioCtx.currentTime + 0.045);
+        }, 50);
+      } catch (e) {}
+    }
+
+    function showSnapToast(msg) {
+      const pill = document.getElementById('targetInfo');
+      if (pill) {
+        const orig = pill.innerText;
+        pill.innerText = msg;
+        pill.style.color = '#38bdf8';
+        pill.style.borderColor = '#38bdf8';
+        setTimeout(() => {
+          pill.innerText = orig;
+          pill.style.color = '';
+          pill.style.borderColor = '';
+        }, 3200);
+      }
+    }
+
     function takeSnapshot() {
+      // 1. Efeito de Flash do Obturador
       const flash = document.getElementById('photoFlash');
       if (flash) {
+        flash.classList.remove('active');
+        void flash.offsetWidth; // Força reflow para reiniciar animação suavemente
         flash.classList.add('active');
-        setTimeout(() => flash.classList.remove('active'), 180);
+        setTimeout(() => flash.classList.remove('active'), 300);
       }
 
-      fetch('/capture_photo', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-          if (res.status === 'ok') {
-            refreshPhotos();
-            // Notificação visual sutil
-            const pill = document.getElementById('targetInfo');
-            if (pill) {
-              const orig = pill.innerText;
-              pill.innerText = `📸 FOTO SALVA: ${res.filename}`;
-              setTimeout(() => { pill.innerText = orig; }, 3000);
+      // 2. Feedback Sonoro: Clique Mecânico no Dispositivo + Som e Expressão no Robô
+      playCameraShutterSound();
+      fetch('/play_sound?id=photo').catch(() => {});
+      fetch('/expr?id=5').catch(() => {}); // Olhos Felizes no OLED do robô
+
+      // 3. Captura dos pixels em Resolução Nativa via HTML5 Canvas
+      const img = document.getElementById('camFeed');
+      if (!img) return;
+
+      try {
+        const snapCanvas = document.createElement('canvas');
+        const w = img.naturalWidth || img.videoWidth || 640;
+        const h = img.naturalHeight || img.videoHeight || 480;
+        snapCanvas.width = w;
+        snapCanvas.height = h;
+        const ctx = snapCanvas.getContext('2d');
+
+        // Desenha frame limpo da câmera (resolução bruta, sem botões de tela)
+        ctx.drawImage(img, 0, 0, w, h);
+
+        // 4. Marca d'Água Estilizada (HUD Neon de Exploração Espacial)
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const ano = now.getFullYear();
+        const mes = pad(now.getMonth() + 1);
+        const dia = pad(now.getDate());
+        const hora = pad(now.getHours());
+        const min = pad(now.getMinutes());
+        const seg = pad(now.getSeconds());
+
+        const timeStr = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+        const hudText = `WALL-E FPV CAM  |  ${timeStr}`;
+
+        ctx.save();
+        const fontSize = Math.max(13, Math.round(w * 0.024));
+        ctx.font = `bold ${fontSize}px "Courier New", Consolas, monospace`;
+        const textMetrics = ctx.measureText(hudText);
+        const paddingX = fontSize * 0.6;
+        const paddingY = fontSize * 0.4;
+        const boxW = textMetrics.width + paddingX * 2;
+        const boxH = fontSize + paddingY * 2;
+        const boxX = w - boxW - 14;
+        const boxY = h - boxH - 12;
+
+        // Caixa HUD semitransparente com borda em amarelo solar
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.2;
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(boxX, boxY, boxW, boxH, 4);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(boxX, boxY, boxW, boxH);
+          ctx.strokeRect(boxX, boxY, boxW, boxH);
+        }
+
+        // Texto em Ciano Neon com sombra nítida
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText(hudText, boxX + paddingX, boxY + fontSize + paddingY * 0.3);
+        ctx.restore();
+
+        // 5. Conversão Instantânea para JPEG 95% e Download Direto para a Galeria
+        const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.95);
+        const filename = `WALLE_${ano}${mes}${dia}_${hora}${min}${seg}.jpg`;
+
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 6. Notificação HUD
+        showSnapToast(`📸 Salvo na Galeria: ${filename}`);
+
+        // Opcional: replica captura no robô se estiver online
+        fetch('/capture_photo', { method: 'POST' })
+          .then(r => r.json())
+          .then(() => refreshPhotos())
+          .catch(() => {});
+
+      } catch (err) {
+        console.warn('[SNAPSHOT] Canvas bloqueado ou em fallback:', err);
+        fetch('/capture_photo', { method: 'POST' })
+          .then(r => r.json())
+          .then(res => {
+            if (res.status === 'ok') {
+              refreshPhotos();
+              showSnapToast(`📸 Salvo no Robô: ${res.filename}`);
             }
-          }
-        })
-        .catch(() => {});
+          })
+          .catch(() => {});
+      }
     }
 
     function toggleReticle() {
