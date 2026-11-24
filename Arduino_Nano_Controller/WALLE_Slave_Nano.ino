@@ -6,13 +6,13 @@
 //    - Motor Esquerdo: Pino 4 (Digital DIR/IN1) e Pino 5 (PWM Timer 0/IN2)
 //    - Motor Direito:  Pino 6 (PWM Timer 0/IN3) e Pino 7 (Digital DIR/IN4)
 // 2. 7 Servomotores SG90 (Controle Direto pelo Nano Shield via Servo.h):
-//    - D2:  Servo 0 (Olho Esquerdo)
-//    - D3:  Servo 1 (Olho Direito)
-//    - D8:  Servo 2 (Pescoço Pan - Giro)
-//    - D9:  Servo 3 (Pescoço Tilt - Cima/Baixo)
-//    - D10: Servo 4 (Pescoço Roll - Inclinação)
-//    - D11: Servo 5 (Braço Esquerdo)
-//    - D12: Servo 6 (Braço Direito)
+//    - D8:  Servo 0 (Olho Esquerdo)
+//    - D9:  Servo 1 (Olho Direito)
+//    - A1:  Servo 2 (Pescoço Pan - Rastreamento Horizontal)
+//    - A2:  Servo 3 (Pescoço Tilt - Rastreamento Vertical)
+//    - A3:  Servo 4 (Pescoço Roll - Inclinação Lateral)
+//    - D10: Servo 5 (Braço Esquerdo)
+//    - D11: Servo 6 (Braço Direito)
 // 3. Display OLED 0.96" SSD1306 (0x3C via I2C: A4 = SDA, A5 = SCL):
 //    - Orientação 90° (Vertical 64x128) com Olhos Animados e Expressões
 // 4. Sensor de Voltagem da Bateria: Pino A0 com filtro de média móvel
@@ -43,7 +43,7 @@ constexpr uint8_t PIN_M_R1 = 6; // Motor Direito Pino 1 (PWM Timer 0/IN3)
 constexpr uint8_t PIN_M_R2 = 7; // Motor Direito Pino 2 (Digital DIR/IN4)
 
 constexpr bool INVERT_LEFT_MOTOR  = false;
-constexpr bool INVERT_RIGHT_MOTOR = false;
+constexpr bool INVERT_RIGHT_MOTOR = true; // Invertido para calibrar polaridade física da esteira direita
 
 // Sensor de Voltagem da Bateria
 constexpr uint8_t PIN_BATTERY = A0;
@@ -61,7 +61,7 @@ constexpr uint8_t SERVO_PINS[SERVO_COUNT] = {
   11   // Servo 6: Pino D11 (Braço Direito)
 };
 
-constexpr float SERVO_STEP_PER_CYCLE = 2.0f; // Graus por ciclo de 20ms (Rampa suave anti-pico)
+float servoStepPerCycle = 0.8f; // Graus por ciclo de 20ms (Padrão 0.8 deg/ciclo = 40 deg/s - movimento suave e sem trancos)
 Servo servos[SERVO_COUNT];
 
 // Display OLED 0.96" SSD1306 a 90° (Vertical: 64 largura x 128 altura)
@@ -89,7 +89,9 @@ enum Expression : uint8_t {
   EXP_CURIOSO = 1,  // Um olho inclinado, focado
   EXP_PISCAR = 2,   // Piscada rápida
   EXP_TRISTE = 3,   // Olhos caídos expressivos
-  EXP_BRAVO = 4     // Olhos determinados
+  EXP_BRAVO = 4,    // Olhos determinados
+  EXP_FELIZ = 5,    // Olhos arqueados alegres (Pose p/ foto)
+  EXP_AMOR = 6      // Modo EVA / Amor com coração
 };
 Expression currentExpression = EXP_NORMAL;
 uint32_t expressionStartTime = 0;
@@ -198,11 +200,15 @@ void updateMotors() {
 
 void updateServos() {
   for (uint8_t i = 0; i < SERVO_COUNT; i++) {
-    // Acionamento direto na velocidade máxima nativa do servo
-    if ((int)currentServoAngle[i] != targetServoAngle[i]) {
-      currentServoAngle[i] = targetServoAngle[i];
-      servos[i].write(targetServoAngle[i]);
+    float diff = (float)targetServoAngle[i] - currentServoAngle[i];
+    if (fabsf(diff) <= servoStepPerCycle) {
+      currentServoAngle[i] = (float)targetServoAngle[i];
+    } else if (diff > 0.0f) {
+      currentServoAngle[i] += servoStepPerCycle;
+    } else {
+      currentServoAngle[i] -= servoStepPerCycle;
     }
+    servos[i].write((int)(currentServoAngle[i] + 0.5f));
   }
 }
 
@@ -226,6 +232,26 @@ void drawEyeV(int cx, int cy, int pupilOffsetX, int pupilOffsetY, int tiltY) {
 
 void drawBlinkEyeV(int cx, int cy) {
   u8g2.drawRBox(cx - 13, cy - 2, 26, 4, 1);
+}
+
+void drawHappyEyeV(int cx, int cy) {
+  drawEyeV(cx, cy - 2, 0, -1, 0);
+  // Pálpebra inferior arqueada feliz
+  u8g2.setDrawColor(0);
+  u8g2.drawBox(cx - 10, cy + 5, 20, 9);
+  u8g2.setDrawColor(1);
+  u8g2.drawLine(cx - 10, cy + 7, cx - 5, cy + 4);
+  u8g2.drawLine(cx - 5, cy + 4, cx + 5, cy + 4);
+  u8g2.drawLine(cx + 5, cy + 4, cx + 10, cy + 7);
+  u8g2.drawLine(cx - 10, cy + 8, cx - 5, cy + 5);
+  u8g2.drawLine(cx - 5, cy + 5, cx + 5, cy + 5);
+  u8g2.drawLine(cx + 5, cy + 5, cx + 10, cy + 8);
+}
+
+void drawHeartIcon(int cx, int cy) {
+  u8g2.drawDisc(cx - 2, cy - 1, 2);
+  u8g2.drawDisc(cx + 2, cy - 1, 2);
+  u8g2.drawTriangle(cx - 4, cy, cx + 4, cy, cx, cy + 5);
 }
 
 void renderVerticalOled() {
@@ -267,6 +293,17 @@ void renderVerticalOled() {
         u8g2.drawLine(37, 13, 59, 7);
         u8g2.drawLine(37, 14, 59, 8);
         break;
+
+      case EXP_FELIZ:
+        drawHappyEyeV(17, 22);
+        drawHappyEyeV(47, 22);
+        break;
+
+      case EXP_AMOR:
+        drawEyeV(17, 22, 1, -1, 0);
+        drawEyeV(47, 22, -1, -1, 0);
+        drawHeartIcon(32, 8);
+        break;
     }
 
     u8g2.drawHLine(2, 45, 60);
@@ -293,6 +330,8 @@ void renderVerticalOled() {
       case EXP_PISCAR:  u8g2.print(F("PISC")); break;
       case EXP_TRISTE:  u8g2.print(F("TRIS")); break;
       case EXP_BRAVO:   u8g2.print(F("BRAV")); break;
+      case EXP_FELIZ:   u8g2.print(F("FELZ")); break;
+      case EXP_AMOR:    u8g2.print(F("AMOR")); break;
     }
 
     u8g2.drawHLine(2, 74, 60);
@@ -399,16 +438,21 @@ void processCommand(char *cmd) {
   // 3. Expressão OLED: "E:<id>"
   else if (cmd[0] == 'E' && cmd[1] == ':') {
     int expId = atoi(cmd + 2);
-    if (expId >= 0 && expId <= 4) {
+    if (expId >= 0 && expId <= 6) {
       currentExpression = (Expression)expId;
       expressionStartTime = millis();
     }
   }
-  // 4. Parada de Emergência: "STOP"
+  // 4. Velocidade de interpolação dos servos: "V:<val>" (decimos de grau por ciclo)
+  else if (cmd[0] == 'V' && cmd[1] == ':') {
+    int spd = constrain(atoi(cmd + 2), 2, 80);
+    servoStepPerCycle = spd / 10.0f;
+  }
+  // 5. Parada de Emergência: "STOP"
   else if (strcmp(cmd, "STOP") == 0) {
     emergencyStop();
   }
-  // 5. Ping / Heartbeat
+  // 6. Ping / Heartbeat
   else if (strcmp(cmd, "PING") == 0) {
     Serial.println(F("PONG"));
   }

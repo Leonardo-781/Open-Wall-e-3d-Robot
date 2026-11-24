@@ -92,12 +92,19 @@ Robô WALL·E impresso em 3D equipado com arquitetura **Dual-Brain** de alto des
 Open-Wall-e-3d-Robot/
 ├── Raspberry_Pi_Core/              # Código do Cérebro Principal (Python / Flask)
 │   ├── app.py                     # Servidor, OpenCV, Face Tracking e Ponte Serial
-│   ├── requirements.txt           # Dependências Python
+│   ├── requirements.txt           # Dependências Python (Flask, OpenCV, PySerial, evdev, yt-dlp)
 │   ├── walle.service              # Serviço systemd de inicialização automática
+│   ├── walle-port80.service       # Redirecionador automático da porta 80 para 5000
+│   ├── static/                    # Arquivos PWA (Progressive Web App)
+│   │   ├── manifest.json          # Manifesto PWA com suporte a tela cheia
+│   │   ├── sw.js                  # Service Worker com cache e zero latência em streaming
+│   │   └── icons/                 # Ícones do App WALL-E (192px, 512px, maskable, apple)
+│   ├── sounds/                    # Biblioteca de áudios MP3/WAV
+│   ├── photos/                    # Galeria de capturas da câmera
 │   └── templates/
-│       └── index.html             # Painel Web Dark-Mode responsivo
+│       └── index.html             # Painel Web Dark-Mode PWA responsivo
 ├── Arduino_Nano_Controller/        # Firmware do Co-Processador de Movimento
-│   └── WALLE_Slave_Nano.ino       # Firmware C++ completo para Arduino Nano
+│   └── WALLE_Slave_Nano.ino       # Firmware C++ completo para Arduino Nano (Rampa suave, OLED, Ponte H)
 ├── Legacy_ESP32_Versions/         # Versões legadas baseadas em ESP32 / Mega
 │   ├── ESP32-Wall-e-Complete.ino
 │   ├── ESP32-Wall-e-Unified.ino
@@ -130,7 +137,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now walle.service
 
 # 4. Acessar a interface Web no navegador
-# Abra no PC ou Celular: http://<IP_DO_RASPBERRY>:5000
+# Abra no PC ou Celular: http://walle.local (ou http://<IP_DO_RASPBERRY>)
+# Instale como App diretamente no celular usando o botão "📲 Instalar App"
 ```
 
 ### 2. Gravando o Arduino Nano

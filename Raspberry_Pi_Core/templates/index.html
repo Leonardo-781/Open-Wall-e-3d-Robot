@@ -2,52 +2,139 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>WALL-E AI Controller</title>
+  
+  <!-- PWA & MOBILE APP CAPABILITIES -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WALL-E">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/icons/favicon.png">
   <style>
     * { box-sizing: border-box; touch-action: manipulation; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 10px; max-width: 600px; margin: 0 auto; }
-    
-    header { display: flex; justify-content: space-between; align-items: center; background: #f59e0b; color: #000; padding: 10px 14px; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
-    .badges { display: flex; gap: 8px; align-items: center; font-size: 12px; }
-    .badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 10px; max-width: 680px; margin: 0 auto; -webkit-tap-highlight-color: transparent; }
+
+    header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; background: #f59e0b; color: #000; padding: 10px 14px; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
+    .badges { display: flex; gap: 6px; align-items: center; font-size: 11px; flex-wrap: wrap; }
+    .badge { padding: 3px 7px; border-radius: 4px; font-weight: bold; }
     .badge-ok { background: #059669; color: #fff; }
     .badge-off { background: #dc2626; color: #fff; }
+    .badge-gp-on { background: #2563eb; color: #fff; }
+    .badge-gp-off { background: #334155; color: #cbd5e1; }
 
-    /* VIDEO STREAM */
+    /* VIDEO STREAM & HUD */
     .stream-container { position: relative; width: 100%; border-radius: 8px; overflow: hidden; background: #000; margin-bottom: 10px; border: 2px solid #334155; }
     .stream-container img { width: 100%; height: auto; display: block; }
-    .stream-overlay { position: absolute; bottom: 8px; left: 8px; font-size: 11px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
+    .stream-overlay { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; font-size: 11px; pointer-events: none; z-index: 10; }
+    .overlay-pill { background: rgba(15, 23, 42, 0.82); padding: 4px 8px; border-radius: 4px; border: 1px solid #475569; backdrop-filter: blur(4px); }
+
+    /* MIRA HOLOGRÁFICA / RETÍCULO */
+    .reticle-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; justify-content: center; align-items: center; z-index: 5; opacity: 0.85; transition: opacity 0.2s; }
+    .reticle-circle { width: 64px; height: 64px; border: 1px dashed rgba(245, 158, 11, 0.8); border-radius: 50%; position: relative; }
+    .reticle-dot { width: 4px; height: 4px; background: #f59e0b; border-radius: 50%; position: absolute; top: 30px; left: 30px; }
+    .reticle-line-h { position: absolute; top: 31px; left: -24px; right: -24px; height: 2px; background: rgba(245, 158, 11, 0.4); }
+    .reticle-line-v { position: absolute; left: 31px; top: -24px; bottom: -24px; width: 2px; background: rgba(245, 158, 11, 0.4); }
+
+    /* FLASH DE CAPTURA DE FOTO */
+    .photo-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; opacity: 0; pointer-events: none; z-index: 20; transition: opacity 0.05s ease-in; }
+    .photo-flash.active { opacity: 0.95; transition: none; }
+
+    /* BARRA SUPERIOR DE AÇÃO DE CÂMERA */
+    .cam-action-bar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .btn-cam-action { padding: 9px 8px; border: none; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-snap { background: #10b981; color: #000; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+    .btn-snap:active { background: #34d399; transform: scale(0.98); }
+    .btn-reticle { background: #1e293b; color: #f59e0b; border: 1px solid #475569; }
+    .btn-reticle.active { background: #f59e0b; color: #000; border-color: #f59e0b; }
+    .btn-cam-gallery { background: #1e293b; color: #38bdf8; border: 1px solid #475569; }
+
+    /* FILTROS VISUAIS */
+    .filter-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 10px; }
+    .btn-filter { padding: 7px 4px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #94a3b8; font-size: 10.5px; font-weight: bold; cursor: pointer; text-align: center; }
+    .btn-filter.active { background: #f59e0b; color: #000; border-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
 
     /* CARDS */
     .card { background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid #334155; }
-    .card h3 { font-size: 14px; color: #f59e0b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card h3 { font-size: 13px; color: #f59e0b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
 
-    /* D-PAD MOTORES */
-    .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 220px; margin: 0 auto; }
-    .dpad button { height: 60px; font-size: 24px; font-weight: bold; border: none; border-radius: 8px; background: #3b82f6; color: #fff; cursor: pointer; }
-    .dpad button:active { background: #60a5fa; }
-    .dpad .btn-stop { background: #ef4444; font-size: 16px; }
+    /* BOTÕES PRINCIPAIS IA & MODO NATURAL */
+    .mode-stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .btn-ai { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 12.5px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .ai-off { background: #334155; color: #cbd5e1; }
+    .ai-on { background: #10b981; color: #000; box-shadow: 0 0 14px rgba(16, 185, 129, 0.55); }
+    .natural-on { background: #0ea5e9; color: #000; box-shadow: 0 0 14px rgba(14, 165, 233, 0.55); }
 
-    /* BOTÃO RASTREAMENTO IA */
-    .btn-ai { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-    .ai-off { background: #334155; color: #94a3b8; }
-    .ai-on { background: #10b981; color: #000; box-shadow: 0 0 14px rgba(16, 185, 129, 0.6); }
+    /* TOGGLES COMPACTOS DA CÂMERA */
+    .cam-toggles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+    .btn-mini { padding: 8px 6px; border: 1px solid #475569; border-radius: 6px; background: #0f172a; color: #94a3b8; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.15s; }
+    .btn-mini.active { background: #f59e0b; color: #000; border-color: #f59e0b; }
+
+    /* TABS DE MODO DE CONTROLE (JOYSTICK X DPAD) */
+    .ctrl-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .ctrl-tab { flex: 1; padding: 9px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #94a3b8; font-size: 12px; font-weight: bold; cursor: pointer; text-align: center; }
+    .ctrl-tab.active { background: #3b82f6; color: #fff; border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+
+    /* JOYSTICK ANALÓGICO VIRTUAL */
+    .joystick-wrapper { display: flex; flex-direction: column; align-items: center; margin: 4px 0 10px 0; }
+    .joystick-canvas { touch-action: none; user-select: none; -webkit-user-select: none; background: radial-gradient(circle, #1e293b 20%, #0f172a 90%); border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.6), inset 0 0 15px rgba(245, 158, 11, 0.2); border: 2px solid #475569; }
+    .joy-telemetry { display: flex; justify-content: space-between; width: 100%; max-width: 280px; font-size: 11px; color: #94a3b8; margin-top: 6px; font-weight: bold; }
+    .joy-telemetry span { background: #0f172a; padding: 3px 6px; border-radius: 4px; border: 1px solid #334155; }
+
+    /* D-PAD CLÁSSICO */
+    .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 220px; margin: 0 auto; user-select: none; -webkit-user-select: none; }
+    .dpad button { height: 56px; font-size: 22px; font-weight: bold; border: none; border-radius: 8px; background: #3b82f6; color: #fff; cursor: pointer; user-select: none; -webkit-user-select: none; }
+    .dpad button:active, .dpad button.pressing { background: #60a5fa; transform: scale(0.97); }
+    .dpad .btn-stop { background: #ef4444; font-size: 15px; }
+
+    /* GAMEPAD HUD WIDGET */
+    .gamepad-hud { background: #0f172a; border: 1px solid #2563eb; border-radius: 6px; padding: 10px; margin-bottom: 10px; display: none; }
+    .gamepad-hud-title { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #60a5fa; margin-bottom: 8px; }
+    .gamepad-sticks { display: flex; justify-content: space-around; margin-top: 6px; }
+    .stick-box { display: flex; flex-direction: column; align-items: center; font-size: 10.5px; color: #94a3b8; }
+    .stick-circle { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #475569; background: #1e293b; position: relative; margin-bottom: 4px; }
+    .stick-pip { width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; position: absolute; top: 17px; left: 17px; transition: 0.05s; }
+
+    /* GERENCIADOR BLUETOOTH RASPBERRY PI */
+    .bt-device-item { display: flex; justify-content: space-between; align-items: center; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px; margin-bottom: 5px; font-size: 11.5px; }
+    .bt-device-item.is-gamepad { border-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
+    .bt-btn { padding: 4px 8px; border: none; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+    .bt-btn-pair { background: #10b981; color: #000; }
+    .bt-btn-conn { background: #3b82f6; color: #fff; }
+    .bt-btn-disc { background: #ef4444; color: #fff; }
 
     /* GRIDS DE BOTÕES */
     .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .btn-grid button { padding: 10px; border: none; border-radius: 6px; background: #0284c7; color: #fff; font-weight: bold; font-size: 12px; cursor: pointer; }
-    .btn-grid button:active { background: #38bdf8; color: #000; }
+    .btn-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .btn-grid button, .btn-grid-2 button { padding: 10px 6px; border: none; border-radius: 6px; background: #0284c7; color: #fff; font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.15s; }
+    .btn-grid button:active, .btn-grid-2 button:active { background: #38bdf8; color: #000; }
+    .btn-pose { background: #7c3aed !important; }
+    .btn-pose:active { background: #a78bfa !important; color: #000 !important; }
+    .btn-sound { background: #0d9488 !important; }
+    .btn-sound:active { background: #2dd4bf !important; color: #000 !important; }
 
     /* SLIDERS */
     .slider-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; }
-    .slider-row label { width: 100px; color: #94a3b8; }
+    .slider-row label { width: 115px; color: #94a3b8; font-size: 12px; }
     .slider-row input { flex: 1; accent-color: #f59e0b; }
-    .slider-row span { width: 35px; text-align: right; font-weight: bold; color: #f59e0b; }
+    .slider-row span { width: 44px; text-align: right; font-weight: bold; color: #f59e0b; font-size: 12px; }
 
     /* SELETOR DE POTÊNCIA */
     .btn-pwr { flex: 1; padding: 8px 4px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #94a3b8; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; }
     .active-pwr { background: #f59e0b; color: #000; border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+
+    .hint { font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4; }
+    .action-status { font-size: 11px; color: #38bdf8; font-weight: normal; }
+
+    /* GALERIA DE FOTOS */
+    .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 220px; overflow-y: auto; margin-top: 8px; }
+    .photo-thumb { position: relative; border-radius: 4px; overflow: hidden; border: 1px solid #334155; background: #000; aspect-ratio: 4/3; }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-thumb-meta { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); font-size: 9px; padding: 2px 4px; color: #cbd5e1; }
 
     /* BOTÃO DESLIGAR */
     .btn-poweroff { width: 100%; padding: 10px; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; margin-top: 5px; }
@@ -56,98 +143,354 @@
 <body>
 
   <header>
-    <div>🤖 WALL-E AI SYSTEM</div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <img src="/static/icons/icon-192.png" alt="Logo" style="width:24px; height:24px; border-radius:5px; vertical-align:middle; box-shadow:0 0 5px rgba(0,0,0,0.3);">
+      <span>WALL-E COCKPIT</span>
+    </div>
     <div class="badges">
+      <button id="btnInstallPwa" onclick="installPwa()" style="display:none; padding:3px 8px; background:#0f172a; color:#f59e0b; border:1px solid #1e293b; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer; box-shadow:0 0 8px rgba(245,158,11,0.35);">📲 Instalar App</button>
+      <button id="btnFullscreen" onclick="toggleFullscreen()" style="padding:3px 8px; background:rgba(0,0,0,0.18); color:#000; border:1px solid rgba(0,0,0,0.3); border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer;">⛶ Tela Cheia</button>
       <span id="nanoBadge" class="badge badge-off">NANO OFF</span>
+      <span id="gamepadBadge" class="badge badge-gp-off">🎮 CONTROLE OFF</span>
       <span id="bat">🔋 -- V</span>
     </div>
   </header>
 
-  <!-- TRANSMISSÃO DE VÍDEO DA CÂMERA -->
+  <!-- TRANSMISSÃO DE VÍDEO DA CÂMERA & OVERLAYS -->
   <div class="stream-container">
-    <img src="/video_feed" alt="Transmissão ao vivo">
-    <div class="stream-overlay" id="fpsInfo">FPS: --</div>
+    <img id="camFeed" src="/video_feed" alt="Transmissão ao vivo">
+    <div id="photoFlash" class="photo-flash"></div>
+    <div id="reticleLayer" class="reticle-layer">
+      <div class="reticle-circle">
+        <div class="reticle-dot"></div>
+        <div class="reticle-line-h"></div>
+        <div class="reticle-line-v"></div>
+      </div>
+    </div>
+    <div class="stream-overlay">
+      <span class="overlay-pill" id="targetInfo">ALVO: MANUAL</span>
+      <span class="overlay-pill" id="panTiltInfo">PAN: 90° | TILT: 90°</span>
+      <span class="overlay-pill" id="fpsInfo">FPS: --</span>
+    </div>
   </div>
 
-  <!-- INTELIGÊNCIA ARTIFICIAL: RASTREAMENTO FACIAL -->
-  <div class="card">
-    <h3>Visão Computacional</h3>
-    <button id="aiBtn" class="btn-ai ai-off" onclick="toggleTracking()">
-      👁️ Rastreamento de Rosto: DESATIVADO
+  <!-- BARRA DE AÇÃO RÁPIDA DE IMAGEM & FOTO HD -->
+  <div class="cam-action-bar">
+    <button class="btn-cam-action btn-snap" onclick="takeSnapshot()">
+      📸 Tirar Foto HD
+    </button>
+    <button id="btnReticleToggle" class="btn-cam-action btn-reticle active" onclick="toggleReticle()">
+      🎯 Mira HUD
+    </button>
+    <button class="btn-cam-action btn-cam-gallery" onclick="togglePhotoGallery()">
+      🖼️ Fotos (<span id="photoCount">0</span>)
     </button>
   </div>
 
-  <!-- CONTROLE DE TRAÇÃO (MOTORES) -->
+  <!-- MODOS DE FILTRO VISUAL DA CÂMERA -->
+  <div class="filter-selector">
+    <button id="flt0" class="btn-filter active" onclick="setVisualFilter(0)">🔘 Normal</button>
+    <button id="flt1" class="btn-filter" onclick="setVisualFilter(1)">🤖 Cyber HUD</button>
+    <button id="flt2" class="btn-filter" onclick="setVisualFilter(2)">🟢 Noturno CLAHE</button>
+    <button id="flt3" class="btn-filter" onclick="setVisualFilter(3)">⚡ Tático IA</button>
+  </div>
+
+  <!-- GAVETA DA GALERIA DE FOTOS CAPTURADAS -->
+  <div id="photoGalleryDrawer" style="display:none; background:#0f172a; padding:10px; border-radius:8px; border:1px solid #334155; margin-bottom:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <span style="font-size:12px; font-weight:bold; color:#f59e0b;">📸 Galeria de Fotos em Alta Resolução</span>
+      <button onclick="refreshPhotos()" style="padding:2px 8px; background:#334155; border:none; border-radius:4px; color:#fff; font-size:10px; cursor:pointer;">🔄 Atualizar</button>
+    </div>
+    <div id="photoGrid" class="photo-grid"></div>
+  </div>
+
+  <!-- VISÃO COMPUTACIONAL, AJUSTES DE IMAGEM & MODO VIDA NATURAL -->
   <div class="card">
-    <h3>Controle de Movimento (Tração DC)</h3>
+    <h3>
+      <span>Visão IA & Ajustes de Câmera</span>
+      <button onclick="toggleCamAdjustDrawer()" style="background:#0f172a; border:1px solid #475569; color:#94a3b8; font-size:10px; padding:3px 8px; border-radius:4px; cursor:pointer;">
+        ⚙️ Brilho/Contraste ▾
+      </button>
+    </h3>
+    <div class="mode-stack">
+      <button id="aiBtn" class="btn-ai ai-off" onclick="toggleTracking()">
+        👁️ Rastreamento de Pessoas (IA): DESATIVADO
+      </button>
+      <button id="naturalBtn" class="btn-ai ai-off" onclick="toggleNatural()">
+        🎬 Modo Filmagem / Vida Natural: DESATIVADO
+      </button>
+    </div>
+
+    <!-- CONTROLES DESLIZANTES DE BRILHO E CONTRASTE DIGITAL -->
+    <div id="camAdjustDrawer" style="display:none; background:#0f172a; padding:10px; border-radius:6px; border:1px solid #334155; margin-bottom:8px;">
+      <div class="slider-row">
+        <label>☀️ Brilho Digital</label>
+        <input type="range" id="brightSlider" min="-60" max="60" value="0" oninput="updateCamAdjust()">
+        <span id="brightVal">0</span>
+      </div>
+      <div class="slider-row">
+        <label>🌓 Contraste</label>
+        <input type="range" id="contrastSlider" min="5" max="22" value="10" oninput="updateCamAdjust()">
+        <span id="contrastVal">1.0x</span>
+      </div>
+      <div class="slider-row">
+        <label>📉 Qualidade JPEG</label>
+        <input type="range" id="qualitySlider" min="30" max="95" value="65" oninput="updateCamAdjust()">
+        <span id="qualityVal">65%</span>
+      </div>
+      <button onclick="resetCamAdjust()" style="width:100%; padding:5px; background:#334155; border:none; border-radius:4px; color:#cbd5e1; font-size:11px; cursor:pointer;">
+        ↺ Redefinir Ajustes Originais
+      </button>
+    </div>
+
+    <div class="cam-toggles">
+      <button id="btnHud" class="btn-mini active" onclick="toggleCamOpt('show_hud')">🎯 HUD On/Off</button>
+      <button id="btnFlip" class="btn-mini" onclick="toggleCamOpt('flip_h')">🪞 Espelhar</button>
+      <button id="btnLight" class="btn-mini" onclick="toggleCamOpt('enhance_light')">☀️ CLAHE Luz</button>
+    </div>
+    <p class="hint">Com <b>Vida Natural + Rastreamento</b> ligados, o WALL-E respira de forma orgânica e faz pose para foto automaticamente ao focar alguém.</p>
+  </div>
+
+  <!-- CONTROLE DE TRAÇÃO (JOYSTICK ANALÓGICO VIRTUAL + D-PAD CLÁSSICO) -->
+  <div class="card">
+    <h3>🕹️ Controle de Movimento (Tração DC)</h3>
+
+    <!-- TABS DE MODO DE PILOTAGEM -->
+    <div class="ctrl-tabs">
+      <div id="tabJoy" class="ctrl-tab active" onclick="switchControlTab('joy')">🕹️ Joystick Analógico</div>
+      <div id="tabDpad" class="ctrl-tab" onclick="switchControlTab('dpad')">🎛️ D-Pad Clássico</div>
+    </div>
+
+    <!-- SELETOR DE POTÊNCIA -->
     <div style="display:flex; justify-content:center; gap:8px; margin-bottom:12px;">
       <button id="pwr100" class="btn-pwr active-pwr" onclick="setPower(255, this)">⚡ 100% FORÇA TOTAL</button>
       <button id="pwr80" class="btn-pwr" onclick="setPower(205, this)">⚙️ 80% MÉDIO</button>
       <button id="pwr60" class="btn-pwr" onclick="setPower(155, this)">🎯 60% PRECISO</button>
     </div>
-    <div class="dpad">
-      <div></div>
-      <button onpointerdown="driveCmd(1,1)" onpointerup="sendDrive(0,0)">▲</button>
-      <div></div>
-      <button onpointerdown="driveCmd(-1,1)" onpointerup="sendDrive(0,0)">◄</button>
-      <button class="btn-stop" onclick="sendStop()">■</button>
-      <button onpointerdown="driveCmd(1,-1)" onpointerup="sendDrive(0,0)">►</button>
-      <div></div>
-      <button onpointerdown="driveCmd(-1,-1)" onpointerup="sendDrive(0,0)">▼</button>
-      <div></div>
+
+    <!-- 1. JOYSTICK ANALÓGICO VIRTUAL (TOUCH / MOUSE) -->
+    <div id="joyContainer" class="joystick-wrapper">
+      <canvas id="joyCanvas" class="joystick-canvas" width="220" height="220"></canvas>
+      <div class="joy-telemetry">
+        <span id="joyEsq">Esq: 0</span>
+        <span id="joyDef">Deflexão: 0%</span>
+        <span id="joyDir">Dir: 0</span>
+      </div>
+      <p class="hint" style="text-align:center;">Arraste o botão analógico em qualquer direção para acelerar e manobrar com precisão proporcional contínua.</p>
+    </div>
+
+    <!-- 2. D-PAD CLÁSSICO (BOTÕES DIRECIONAIS) -->
+    <div id="dpadContainer" style="display:none;">
+      <div class="dpad">
+        <div></div>
+        <button onpointerdown="startDrive(1,1,event)" onpointerup="stopDrive()" onpointerleave="stopDrive()" onpointercancel="stopDrive()" oncontextmenu="return false">▲</button>
+        <div></div>
+        <button onpointerdown="startDrive(-1,1,event)" onpointerup="stopDrive()" onpointerleave="stopDrive()" onpointercancel="stopDrive()" oncontextmenu="return false">◄</button>
+        <button class="btn-stop" onclick="sendStop()">■</button>
+        <button onpointerdown="startDrive(1,-1,event)" onpointerup="stopDrive()" onpointerleave="stopDrive()" onpointercancel="stopDrive()" oncontextmenu="return false">►</button>
+        <div></div>
+        <button onpointerdown="startDrive(-1,-1,event)" onpointerup="stopDrive()" onpointerleave="stopDrive()" onpointercancel="stopDrive()" oncontextmenu="return false">▼</button>
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD VISUAL DO CONTROLE GAMEPAD (SE CONECTADO VIA WEB OU PI) -->
+  <div id="gamepadHud" class="gamepad-hud">
+    <div class="gamepad-hud-title">
+      <span id="gamepadHudName">🎮 CONTROLE BLUETOOTH CONECTADO</span>
+      <span id="gamepadHudType" style="color:#10b981;">ATIVO</span>
+    </div>
+    <div class="gamepad-sticks">
+      <div class="stick-box">
+        <div class="stick-circle"><div id="gpStickLeft" class="stick-pip"></div></div>
+        <span>TRAÇÃO ANALÓGICA</span>
+      </div>
+      <div class="stick-box">
+        <div class="stick-circle"><div id="gpStickRight" class="stick-pip"></div></div>
+        <span>CÂMERA PAN/TILT</span>
+      </div>
+    </div>
+    <div style="font-size:10px; color:#cbd5e1; margin-top:8px; line-height:1.4;">
+      <b>Botões:</b> A/✕=Foto | B/◯=Parar | X/▢=Acenar | Y/△=IA | L1/R1=Braços | R2=Buzina | L2=Turbo.
+    </div>
+  </div>
+
+  <!-- GERENCIADOR BLUETOOTH DO RASPBERRY PI (PAREAMENTO DIRETO) -->
+  <div class="card">
+    <h3>
+      <span>🎮 Controles Bluetooth no Raspberry Pi</span>
+      <button onclick="toggleBtDrawer()" style="background:#0f172a; border:1px solid #475569; color:#94a3b8; font-size:10px; padding:3px 8px; border-radius:4px; cursor:pointer;">
+        Bluetooth Manager ▾
+      </button>
+    </h3>
+    <div id="btDrawer" style="display:none; background:#0f172a; padding:10px; border-radius:6px; border:1px solid #334155;">
+      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <button id="btnBtScan" onclick="startBtScan()" style="flex:1; padding:8px; background:#2563eb; color:#fff; border:none; border-radius:4px; font-size:11.5px; font-weight:bold; cursor:pointer;">
+          🔍 Buscar Dispositivos (6s)
+        </button>
+        <button onclick="loadBtDevices()" style="padding:8px 12px; background:#334155; color:#fff; border:none; border-radius:4px; font-size:11.5px; cursor:pointer;">
+          🔄
+        </button>
+      </div>
+      <div id="btStatusMsg" style="font-size:11px; color:#94a3b8; margin-bottom:6px;"></div>
+      <div id="btDevicesList">
+        <div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">Clique em 'Buscar Dispositivos' com seu controle no modo de pareamento (ex: Share + PS).</div>
+      </div>
+    </div>
+    <p class="hint">Você pode conectar controles Bluetooth de <b>duas formas:</b> pareando diretamente no seu celular/PC pelo navegador, ou pareando nativamente no Raspberry Pi.</p>
+  </div>
+
+  <!-- POSES PARA FOTOS & COREOGRAFIAS -->
+  <div class="card">
+    <h3>
+      <span>📸 Poses para Fotos & Coreografias</span>
+      <span id="actionStatus" class="action-status"></span>
+    </h3>
+    <div class="btn-grid-2">
+      <button class="btn-pose" onclick="runAction('pose_foto')">📸 Pose p/ Foto</button>
+      <button class="btn-pose" onclick="runAction('acenar')">👋 Acenar / Oi</button>
+      <button class="btn-pose" onclick="runAction('curioso')">🔍 Examinar (Binóculo)</button>
+      <button class="btn-pose" onclick="runAction('timido')">🥺 Olhar Fofo / Tímido</button>
+      <button class="btn-pose" onclick="runAction('eva')">❤️ Encontrou a EVA!</button>
+      <button class="btn-pose" onclick="runAction('neutro')">🧘 Posição Neutra (90°)</button>
+    </div>
+  </div>
+
+  <!-- VOZES & SONS DO WALL-E (SAÍDA ANALÓGICA P2 3.5mm COM SUPER BOOST & CATÁLOGO) -->
+  <div class="card">
+    <h3>
+      <span>🔊 Vozes & Sons do WALL-E</span>
+      <span id="audioBadge" class="badge badge-ok">SAÍDA: P2 (3.5mm)</span>
+    </h3>
+
+    <!-- GRADE DE SONS (PREDEFINIDOS + DINÂMICOS) -->
+    <div id="soundButtonsGrid" class="btn-grid" style="margin-bottom: 10px;"></div>
+
+    <!-- CONTROLE DE VOLUME COM SUPER BOOST (ATÉ 200%) -->
+    <div class="slider-row" style="margin-bottom: 4px;">
+      <label id="volLabel">🔊 Volume P2</label>
+      <input type="range" id="volSlider" min="0" max="200" value="100" oninput="setVolume(this.value)">
+      <span id="volVal">100%</span>
+    </div>
+    <div id="boostIndicator" style="font-size: 11px; text-align: center; color: #10b981; font-weight: bold; margin-bottom: 8px;">
+      Volume Normal ALSA (100% Hardware)
+    </div>
+
+    <!-- EXPANSÃO: ADICIONAR NOVO ÁUDIO (YOUTUBE OU ARQUIVO) -->
+    <div style="border-top: 1px solid #334155; padding-top: 8px; margin-top: 6px;">
+      <button onclick="toggleSoundDrawer()" style="width:100%; padding:8px; background:#1e293b; border:1px dashed #64748b; border-radius:6px; color:#cbd5e1; font-size:11px; cursor:pointer; font-weight:bold;">
+        ➕ Adicionar Novo Áudio (YouTube ou Arquivo MP3/WAV) ▾
+      </button>
+      <div id="soundDrawer" style="display:none; margin-top:8px; background:#0f172a; padding:10px; border-radius:6px; border:1px solid #334155;">
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:bold; color:#f59e0b; margin-bottom:4px;">🔗 BAIXAR DE LINK DO YOUTUBE:</div>
+          <input type="text" id="ytUrlInput" placeholder="Cole o link do YouTube aqui..." style="width:100%; padding:7px; background:#1e293b; border:1px solid #475569; border-radius:4px; color:#fff; font-size:11px; margin-bottom:4px; box-sizing:border-box;">
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="ytNameInput" placeholder="Nome do som (ex: risada)" style="flex:1; padding:7px; background:#1e293b; border:1px solid #475569; border-radius:4px; color:#fff; font-size:11px; box-sizing:border-box;">
+            <button id="btnYtDownload" onclick="downloadFromYoutube()" style="padding:7px 12px; background:#ef4444; border:none; border-radius:4px; color:#fff; font-size:11px; font-weight:bold; cursor:pointer;">⬇️ Baixar</button>
+          </div>
+          <div id="ytStatus" style="font-size:11px; color:#94a3b8; margin-top:4px;"></div>
+        </div>
+
+        <div>
+          <div style="font-size:11px; font-weight:bold; color:#10b981; margin-bottom:4px;">📁 ENVIAR ARQUIVO DO CELULAR OU PC:</div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="file" id="fileAudioInput" accept="audio/*,.mp3,.wav,.ogg,.m4a" style="flex:1; font-size:11px; color:#94a3b8;">
+            <button id="btnUploadAudio" onclick="uploadAudioFile()" style="padding:7px 12px; background:#10b981; border:none; border-radius:4px; color:#000; font-size:11px; font-weight:bold; cursor:pointer;">⬆️ Enviar</button>
+          </div>
+          <div id="uploadStatus" style="font-size:11px; color:#94a3b8; margin-top:4px;"></div>
+        </div>
+
+        <button onclick="clearAllSounds()" style="width:100%; margin-top:12px; padding:7px; background:#7f1d1d; border:1px solid #991b1b; border-radius:4px; color:#fca5a5; font-size:11px; font-weight:bold; cursor:pointer;">
+          🗑️ Apagar Todos os Áudios da Memória
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- EXPRESSÕES DOS OLHOS NO OLED -->
   <div class="card">
-    <h3>Expressões (Display OLED)</h3>
+    <h3>👀 Expressões (Display OLED)</h3>
     <div class="btn-grid">
       <button onclick="sendExpr(0)">Normal</button>
       <button onclick="sendExpr(1)">Curioso</button>
       <button onclick="sendExpr(2)">Piscar</button>
       <button onclick="sendExpr(3)">Triste</button>
       <button onclick="sendExpr(4)">Bravo</button>
-      <button onclick="sendStop()" style="background:#ef4444">Parar</button>
+      <button onclick="sendExpr(5)">Feliz (Foto)</button>
+      <button onclick="sendExpr(6)">Amor (EVA)</button>
+      <button onclick="sendStop()" style="background:#ef4444; grid-column: span 2;">■ Parar Tudo</button>
     </div>
   </div>
 
-  <!-- CONTROLE MANUAL DOS 7 SERVOS (DIRETO NO NANO SHIELD) -->
+  <!-- CONTROLE MANUAL DOS 7 SERVOS (NANO SHIELD) -->
   <div class="card">
-    <h3>Controle dos 7 Servos (Nano Shield)</h3>
+    <h3>
+      <span>Controle dos 7 Servos (Nano Shield)</span>
+      <button onclick="testAllServos()" style="padding:4px 8px; background:#f59e0b; color:#000; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">
+        🔄 Testar Todos (0 a 6)
+      </button>
+    </h3>
+    <div id="servoTestStatus" style="font-size:11px; color:#38bdf8; text-align:center; min-height:16px; margin-bottom:6px;"></div>
+
+    <!-- CONTROLE DE SUAVIDADE DOS SERVOS (ANTI-TRANCO) -->
+    <div style="background:#0f172a; padding:10px; border-radius:8px; margin-bottom:12px; border:1px solid #1e293b;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-weight:600; font-size:12px; color:#38bdf8;">🌊 Suavidade dos Movimentos (Anti-Tranco):</span>
+        <span id="servoSpeedLabel" style="font-weight:bold; color:#f59e0b; font-size:12px;">Suave (8)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:11px; color:#64748b;">Ultra Lento</span>
+        <input type="range" id="servoSpeedSlider" min="3" max="25" value="8" style="flex:1;" oninput="updateServoSpeed(this.value)">
+        <span style="font-size:11px; color:#64748b;">Rápido</span>
+      </div>
+      <div style="font-size:10px; color:#94a3b8; margin-top:4px;">
+        * Rampa suave executada a cada 20ms no Nano. Evita trancos, solavancos e quedas de tensão nos servos SG90.
+      </div>
+    </div>
+
     <div class="slider-row">
       <label>0. Olho Esq (D8)</label>
-      <input type="range" min="0" max="180" value="90" oninput="sendServo(0, this.value); val0.innerText=this.value">
+      <input type="range" id="slider0" min="0" max="180" value="90" oninput="sendServo(0, this.value); val0.innerText=this.value">
       <span id="val0">90</span>
+      <button onclick="testServo(0)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
     <div class="slider-row">
       <label>1. Olho Dir (D9)</label>
-      <input type="range" min="0" max="180" value="90" oninput="sendServo(1, this.value); val1.innerText=this.value">
+      <input type="range" id="slider1" min="0" max="180" value="90" oninput="sendServo(1, this.value); val1.innerText=this.value">
       <span id="val1">90</span>
+      <button onclick="testServo(1)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
     <div class="slider-row">
       <label>2. Pesc Pan (A1)</label>
-      <input type="range" min="0" max="180" value="90" id="sliderPan" oninput="sendServo(2, this.value); val2.innerText=this.value">
+      <input type="range" id="sliderPan" min="0" max="180" value="90" oninput="sendServo(2, this.value); val2.innerText=this.value">
       <span id="val2">90</span>
+      <button onclick="testServo(2)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
     <div class="slider-row">
       <label>3. Pesc Tilt (A2)</label>
-      <input type="range" min="0" max="180" value="90" id="sliderTilt" oninput="sendServo(3, this.value); val3.innerText=this.value">
+      <input type="range" id="sliderTilt" min="0" max="180" value="90" oninput="sendServo(3, this.value); val3.innerText=this.value">
       <span id="val3">90</span>
+      <button onclick="testServo(3)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
     <div class="slider-row">
       <label>4. Pesc Roll (A3)</label>
-      <input type="range" min="0" max="180" value="90" oninput="sendServo(4, this.value); val4.innerText=this.value">
+      <input type="range" id="slider4" min="0" max="180" value="90" oninput="sendServo(4, this.value); val4.innerText=this.value">
       <span id="val4">90</span>
+      <button onclick="testServo(4)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
     <div class="slider-row">
       <label>5. Braço Esq (D10)</label>
-      <input type="range" min="0" max="180" value="90" oninput="sendServo(5, this.value); val5.innerText=this.value">
+      <input type="range" id="slider5" min="0" max="180" value="90" oninput="sendServo(5, this.value); val5.innerText=this.value">
       <span id="val5">90</span>
+      <button onclick="testServo(5)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
     <div class="slider-row">
       <label>6. Braço Dir (D11)</label>
-      <input type="range" min="0" max="180" value="90" oninput="sendServo(6, this.value); val6.innerText=this.value">
+      <input type="range" id="slider6" min="0" max="180" value="90" oninput="sendServo(6, this.value); val6.innerText=this.value">
       <span id="val6">90</span>
+      <button onclick="testServo(6)" style="margin-left:6px; padding:3px 6px; background:#334155; color:#fff; border:1px solid #475569; border-radius:4px; font-size:10px; cursor:pointer;">⚡ Testar</button>
     </div>
   </div>
 
@@ -158,36 +501,844 @@
   </div>
 
   <script>
+    // =========================================================================
+    // ESTADO GLOBAL DO CONTROLE
+    // =========================================================================
     let currentPower = 255;
+    let driveInterval = null;
+    let camState = { show_hud: true, flip_h: false, flip_v: false, enhance_light: false, brightness: 0, contrast: 1.0, filter_mode: 0, quality: 65 };
+    let isTracking = false;
+    let panPos = 90;
+    let tiltPos = 90;
+    let gamepadPiConnected = false;
+    let showReticle = true;
+
     function setPower(val, btn) {
       currentPower = val;
       document.querySelectorAll('.btn-pwr').forEach(b => b.classList.remove('active-pwr'));
       btn.classList.add('active-pwr');
     }
-    function driveCmd(dirL, dirR) {
-      sendDrive(dirL * currentPower, dirR * currentPower);
+
+    function sendDrive(l, r) { fetch(`/drive?l=${l}&r=${r}`).catch(() => {}); }
+    function sendServo(id, ang) {
+      if (id === 2) panPos = Number(ang);
+      if (id === 3) tiltPos = Number(ang);
+      fetch(`/servo?id=${id}&ang=${ang}`).catch(() => {});
     }
 
-    function sendDrive(l, r) { fetch(`/drive?l=${l}&r=${r}`); }
-    function sendServo(id, ang) { fetch(`/servo?id=${id}&ang=${ang}`); }
-    function sendExpr(id) { fetch(`/expr?id=${id}`); }
-    function sendStop() { fetch('/stop'); }
+    function sendExpr(id) { fetch(`/expr?id=${id}`).catch(() => {}); }
+    function playSound(id) { fetch(`/sound?id=${id}`).catch(() => {}); }
+    function runAction(name) { fetch(`/action?name=${encodeURIComponent(name)}`).catch(() => {}); }
+
+    function sendStop() {
+      stopDrive(false);
+      fetch('/stop').catch(() => {});
+    }
+
+    // =========================================================================
+    // 1. JOYSTICK ANALÓGICO VIRTUAL (HTML5 CANVAS TOUCH/MOUSE)
+    // =========================================================================
+    const canvas = document.getElementById('joyCanvas');
+    const ctx = canvas.getContext('2d');
+    const joyRadius = 85;
+    const knobRadius = 32;
+    const center = { x: canvas.width / 2, y: canvas.height / 2 };
+    let knobPos = { x: center.x, y: center.y };
+    let isDraggingJoy = false;
+    let joyInterval = null;
+    let joyNormalized = { x: 0, y: 0 };
+
+    function drawJoystick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Círculo base com gradiente
+      const baseGrad = ctx.createRadialGradient(center.x, center.y, 10, center.x, center.y, joyRadius);
+      baseGrad.addColorStop(0, '#1e293b');
+      baseGrad.addColorStop(0.85, '#0f172a');
+      baseGrad.addColorStop(1, '#020617');
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, joyRadius, 0, Math.PI * 2);
+      ctx.fillStyle = baseGrad;
+      ctx.fill();
+
+      // Borda externa com anel âmbar
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = isDraggingJoy ? '#f59e0b' : '#475569';
+      ctx.stroke();
+
+      // Linhas de mira e ticks direcionais
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(center.x - joyRadius, center.y);
+      ctx.lineTo(center.x + joyRadius, center.y);
+      ctx.moveTo(center.x, center.y - joyRadius);
+      ctx.lineTo(center.x, center.y + joyRadius);
+      ctx.stroke();
+
+      // Círculo de Deadzone central
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 16, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Vetor de tração conectando o centro ao botão
+      if (isDraggingJoy && (knobPos.x !== center.x || knobPos.y !== center.y)) {
+        ctx.beginPath();
+        ctx.moveTo(center.x, center.y);
+        ctx.lineTo(knobPos.x, knobPos.y);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+        ctx.stroke();
+      }
+
+      // Botão analógico móvel (Thumbstick Knob)
+      const knobGrad = ctx.createRadialGradient(knobPos.x - 6, knobPos.y - 6, 4, knobPos.x, knobPos.y, knobRadius);
+      if (isDraggingJoy) {
+        knobGrad.addColorStop(0, '#fef08a');
+        knobGrad.addColorStop(0.4, '#f59e0b');
+        knobGrad.addColorStop(1, '#b45309');
+      } else {
+        knobGrad.addColorStop(0, '#64748b');
+        knobGrad.addColorStop(0.5, '#334155');
+        knobGrad.addColorStop(1, '#1e293b');
+      }
+
+      ctx.beginPath();
+      ctx.arc(knobPos.x, knobPos.y, knobRadius, 0, Math.PI * 2);
+      ctx.fillStyle = knobGrad;
+      ctx.shadowColor = isDraggingJoy ? 'rgba(245, 158, 11, 0.7)' : 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = isDraggingJoy ? 12 : 6;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isDraggingJoy ? '#ffffff' : '#475569';
+      ctx.stroke();
+
+      // Ponto central do knob
+      ctx.beginPath();
+      ctx.arc(knobPos.x, knobPos.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = isDraggingJoy ? '#ffffff' : '#94a3b8';
+      ctx.fill();
+    }
+
+    function updateJoystickFromEvent(ev) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = ev.clientX !== undefined ? ev.clientX : (ev.touches ? ev.touches[0].clientX : center.x);
+      const clientY = ev.clientY !== undefined ? ev.clientY : (ev.touches ? ev.touches[0].clientY : center.y);
+
+      let dx = clientX - (rect.left + center.x);
+      let dy = clientY - (rect.top + center.y);
+
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > joyRadius) {
+        dx = (dx / dist) * joyRadius;
+        dy = (dy / dist) * joyRadius;
+      }
+
+      knobPos = { x: center.x + dx, y: center.y + dy };
+
+      // Normaliza para [-1.0, 1.0]
+      let nx = dx / joyRadius;
+      let ny = -dy / joyRadius; // Inverte Y: para cima é positivo (frente)
+
+      // Deadzone circular de 12%
+      const mag = Math.sqrt(nx * nx + ny * ny);
+      if (mag < 0.12) {
+        nx = 0;
+        ny = 0;
+      }
+
+      joyNormalized = { x: nx, y: ny };
+
+      // Calcula tração diferencial proporcional
+      const left = Math.max(-255, Math.min(255, Math.round((ny + nx) * currentPower)));
+      const right = Math.max(-255, Math.min(255, Math.round((ny - nx) * currentPower)));
+
+      document.getElementById('joyEsq').innerText = `Esq: ${left > 0 ? '+' : ''}${left}`;
+      document.getElementById('joyDir').innerText = `Dir: ${right > 0 ? '+' : ''}${right}`;
+      document.getElementById('joyDef').innerText = `Deflexão: ${Math.round(mag * 100)}%`;
+
+      drawJoystick();
+    }
+
+    function startJoyDrag(ev) {
+      if (ev) ev.preventDefault();
+      isDraggingJoy = true;
+      updateJoystickFromEvent(ev);
+
+      if (joyInterval) clearInterval(joyInterval);
+      joyInterval = setInterval(() => {
+        if (!isDraggingJoy) return;
+        const nx = joyNormalized.x;
+        const ny = joyNormalized.y;
+        if (nx !== 0 || ny !== 0) {
+          const l = Math.max(-255, Math.min(255, Math.round((ny + nx) * currentPower)));
+          const r = Math.max(-255, Math.min(255, Math.round((ny - nx) * currentPower)));
+          sendDrive(l, r);
+        } else {
+          sendDrive(0, 0);
+        }
+      }, 110);
+    }
+
+    function moveJoyDrag(ev) {
+      if (!isDraggingJoy) return;
+      if (ev) ev.preventDefault();
+      updateJoystickFromEvent(ev);
+    }
+
+    function endJoyDrag(ev) {
+      if (!isDraggingJoy) return;
+      isDraggingJoy = false;
+      if (joyInterval) {
+        clearInterval(joyInterval);
+        joyInterval = null;
+      }
+
+      // Animação suave de retorno do analógico ao centro
+      const startX = knobPos.x;
+      const startY = knobPos.y;
+      const t0 = performance.now();
+      const dur = 120;
+
+      function snapBack(now) {
+        const progress = Math.min(1, (now - t0) / dur);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        knobPos.x = startX + (center.x - startX) * ease;
+        knobPos.y = startY + (center.y - startY) * ease;
+        drawJoystick();
+        if (progress < 1) {
+          requestAnimationFrame(snapBack);
+        } else {
+          knobPos = { x: center.x, y: center.y };
+          joyNormalized = { x: 0, y: 0 };
+          document.getElementById('joyEsq').innerText = 'Esq: 0';
+          document.getElementById('joyDir').innerText = 'Dir: 0';
+          document.getElementById('joyDef').innerText = 'Deflexão: 0%';
+          drawJoystick();
+          sendDrive(0, 0);
+        }
+      }
+      requestAnimationFrame(snapBack);
+    }
+
+    canvas.addEventListener('pointerdown', startJoyDrag);
+    window.addEventListener('pointermove', moveJoyDrag);
+    window.addEventListener('pointerup', endJoyDrag);
+    window.addEventListener('pointercancel', endJoyDrag);
+    drawJoystick();
+
+    function switchControlTab(mode) {
+      const isJoy = mode === 'joy';
+      document.getElementById('tabJoy').classList.toggle('active', isJoy);
+      document.getElementById('tabDpad').classList.toggle('active', !isJoy);
+      document.getElementById('joyContainer').style.display = isJoy ? 'flex' : 'none';
+      document.getElementById('dpadContainer').style.display = isJoy ? 'none' : 'block';
+    }
+
+    // D-Pad contínuo clássico
+    function startDrive(dirL, dirR, ev) {
+      if (ev) ev.preventDefault();
+      stopDrive(false);
+      const sendNow = () => sendDrive(dirL * currentPower, dirR * currentPower);
+      sendNow();
+      driveInterval = setInterval(sendNow, 220);
+    }
+
+    function stopDrive(sendZero = true) {
+      if (driveInterval) {
+        clearInterval(driveInterval);
+        driveInterval = null;
+      }
+      if (sendZero) sendDrive(0, 0);
+    }
+    window.addEventListener('blur', () => { stopDrive(); endJoyDrag(); });
+
+    // =========================================================================
+    // 2. CAPTURA DE FOTOS HD & FILTROS VISUAIS
+    // =========================================================================
+    function takeSnapshot() {
+      const flash = document.getElementById('photoFlash');
+      if (flash) {
+        flash.classList.add('active');
+        setTimeout(() => flash.classList.remove('active'), 180);
+      }
+
+      fetch('/capture_photo', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status === 'ok') {
+            refreshPhotos();
+            // Notificação visual sutil
+            const pill = document.getElementById('targetInfo');
+            if (pill) {
+              const orig = pill.innerText;
+              pill.innerText = `📸 FOTO SALVA: ${res.filename}`;
+              setTimeout(() => { pill.innerText = orig; }, 3000);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    function toggleReticle() {
+      showReticle = !showReticle;
+      const layer = document.getElementById('reticleLayer');
+      const btn = document.getElementById('btnReticleToggle');
+      if (layer) layer.style.display = showReticle ? 'flex' : 'none';
+      if (btn) btn.classList.toggle('active', showReticle);
+    }
+
+    function setVisualFilter(mode) {
+      for (let i = 0; i <= 3; i++) {
+        const btn = document.getElementById(`flt${i}`);
+        if (btn) btn.classList.toggle('active', i === mode);
+      }
+      fetch(`/camera_adjust?filter_mode=${mode}`).catch(() => {});
+    }
+
+    function toggleCamAdjustDrawer() {
+      const d = document.getElementById('camAdjustDrawer');
+      if (d) d.style.display = (d.style.display === 'none' || !d.style.display) ? 'block' : 'none';
+    }
+
+    function updateCamAdjust() {
+      const b = document.getElementById('brightSlider').value;
+      const c = (document.getElementById('contrastSlider').value / 10).toFixed(1);
+      const q = document.getElementById('qualitySlider').value;
+      document.getElementById('brightVal').innerText = b > 0 ? `+${b}` : b;
+      document.getElementById('contrastVal').innerText = `${c}x`;
+      document.getElementById('qualityVal').innerText = `${q}%`;
+      fetch(`/camera_adjust?brightness=${b}&contrast=${c}&quality=${q}`).catch(() => {});
+    }
+
+    function resetCamAdjust() {
+      document.getElementById('brightSlider').value = 0;
+      document.getElementById('contrastSlider').value = 10;
+      document.getElementById('qualitySlider').value = 65;
+      updateCamAdjust();
+    }
+
+    function togglePhotoGallery() {
+      const d = document.getElementById('photoGalleryDrawer');
+      if (d) {
+        const isHidden = (d.style.display === 'none' || !d.style.display);
+        d.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) refreshPhotos();
+      }
+    }
+
+    function refreshPhotos() {
+      fetch('/photos_list')
+        .then(r => r.json())
+        .then(data => {
+          if (!data || !data.photos) return;
+          document.getElementById('photoCount').innerText = data.total || data.photos.length;
+          const grid = document.getElementById('photoGrid');
+          if (!grid) return;
+          grid.innerHTML = '';
+          if (data.photos.length === 0) {
+            grid.innerHTML = '<div style="grid-column: span 3; text-align:center; color:#64748b; font-size:11px; padding:15px;">Nenhuma foto capturada ainda. Clique em "Tirar Foto HD"!</div>';
+            return;
+          }
+          data.photos.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'photo-thumb';
+            item.innerHTML = `
+              <a href="${p.url}" target="_blank" download>
+                <img src="${p.url}" alt="${p.filename}" loading="lazy">
+                <div class="photo-thumb-meta">${p.time} (${p.size})</div>
+              </a>
+            `;
+            grid.appendChild(item);
+          });
+        })
+        .catch(() => {});
+    }
+
+    // =========================================================================
+    // 3. GERENCIADOR BLUETOOTH RASPBERRY PI
+    // =========================================================================
+    function toggleBtDrawer() {
+      const d = document.getElementById('btDrawer');
+      if (d) {
+        const isHidden = (d.style.display === 'none' || !d.style.display);
+        d.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) loadBtDevices();
+      }
+    }
+
+    function startBtScan() {
+      const btn = document.getElementById('btnBtScan');
+      const msg = document.getElementById('btStatusMsg');
+      btn.disabled = true;
+      btn.innerText = '⏳ Buscando Controles...';
+      msg.innerText = 'Escaneando dispositivos Bluetooth no raio do WALL-E...';
+      msg.style.color = '#38bdf8';
+
+      fetch('/api/bluetooth/scan', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => {
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerText = '🔍 Buscar Dispositivos (6s)';
+            loadBtDevices();
+          }, 6500);
+        })
+        .catch(() => {
+          btn.disabled = false;
+          btn.innerText = '🔍 Buscar Dispositivos (6s)';
+        });
+    }
+
+    function loadBtDevices() {
+      fetch('/api/bluetooth/status')
+        .then(r => r.json())
+        .then(data => {
+          const list = document.getElementById('btDevicesList');
+          const msg = document.getElementById('btStatusMsg');
+          if (!list) return;
+          list.innerHTML = '';
+          if (!data || !data.devices || data.devices.length === 0) {
+            list.innerHTML = '<div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">Nenhum dispositivo encontrado. Coloque seu controle em pareamento e clique em Buscar.</div>';
+            return;
+          }
+
+          msg.innerText = `${data.devices.length} dispositivo(s) encontrado(s):`;
+          msg.style.color = '#94a3b8';
+
+          data.devices.forEach(dev => {
+            const item = document.createElement('div');
+            item.className = `bt-device-item ${dev.is_gamepad ? 'is-gamepad' : ''}`;
+            const pairedBadge = dev.paired ? '<span style="color:#10b981; font-weight:bold;">[Pareado]</span>' : '';
+            const connBadge = dev.connected ? '<span style="color:#38bdf8; font-weight:bold;">[Conectado]</span>' : '';
+
+            let actionBtn = '';
+            if (dev.connected) {
+              actionBtn = `<button class="bt-btn bt-btn-disc" onclick="disconnectBt('${dev.mac}')">Desconectar</button>`;
+            } else if (dev.paired) {
+              actionBtn = `<button class="bt-btn bt-btn-conn" onclick="connectBt('${dev.mac}')">Conectar</button>`;
+            } else {
+              actionBtn = `<button class="bt-btn bt-btn-pair" onclick="pairBt('${dev.mac}')">🔗 Parear</button>`;
+            }
+
+            item.innerHTML = `
+              <div>
+                <span style="font-size:14px; margin-right:4px;">${dev.icon || '📱'}</span>
+                <b>${dev.name || dev.mac}</b> ${pairedBadge} ${connBadge}
+                <div style="font-size:10px; color:#64748b;">${dev.mac}</div>
+              </div>
+              <div>${actionBtn}</div>
+            `;
+            list.appendChild(item);
+          });
+        })
+        .catch(() => {});
+    }
+
+    function pairBt(mac) {
+      const msg = document.getElementById('btStatusMsg');
+      if (msg) msg.innerText = `⏳ Pareando com ${mac}... Aguarde a confirmação de segurança.`;
+      fetch('/api/bluetooth/pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mac: mac })
+      })
+      .then(() => {
+        setTimeout(loadBtDevices, 5000);
+      });
+    }
+
+    function connectBt(mac) {
+      fetch('/api/bluetooth/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mac: mac })
+      }).then(() => setTimeout(loadBtDevices, 2500));
+    }
+
+    function disconnectBt(mac) {
+      fetch('/api/bluetooth/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mac: mac })
+      }).then(() => setTimeout(loadBtDevices, 1500));
+    }
+
+    // =========================================================================
+    // 4. GAMEPAD BLUETOOTH NO NAVEGADOR (WEB GAMEPAD API)
+    // =========================================================================
+    let prevGpButtons = [];
+    let gpDriveActive = false;
+    let lastGpDriveTx = 0;
+    let lastGpServoTx = 0;
+
+    function updateGamepadHUD(gp) {
+      const badge = document.getElementById('gamepadBadge');
+      const hud = document.getElementById('gamepadHud');
+      if (gp || gamepadPiConnected) {
+        badge.className = 'badge badge-gp-on';
+        badge.innerText = gp ? '🎮 CONTROLE WEB OK' : '🎮 CONTROLE PI OK';
+      } else {
+        badge.className = 'badge badge-gp-off';
+        badge.innerText = '🎮 CONTROLE OFF';
+      }
+
+      if (hud) hud.style.display = gp ? 'block' : 'none';
+      if (gp) {
+        document.getElementById('gamepadHudName').innerText = `🎮 ${gp.id.substring(0, 32).toUpperCase()}`;
+        // Atualiza pip visual dos analógicos
+        const lx = gp.axes[0] || 0;
+        const ly = gp.axes[1] || 0;
+        const rx = gp.axes[2] || gp.axes[3] || 0;
+        const ry = gp.axes[3] || gp.axes[4] || 0;
+        const pipL = document.getElementById('gpStickLeft');
+        const pipR = document.getElementById('gpStickRight');
+        if (pipL) { pipL.style.transform = `translate(${lx * 15}px, ${ly * 15}px)`; }
+        if (pipR) { pipR.style.transform = `translate(${rx * 15}px, ${ry * 15}px)`; }
+      }
+    }
+
+    setInterval(() => {
+      if (!navigator.getGamepads) return;
+      const pads = navigator.getGamepads();
+      const gp = Array.from(pads || []).find(p => p && p.connected);
+      updateGamepadHUD(gp);
+      if (!gp) {
+        if (gpDriveActive) { gpDriveActive = false; sendDrive(0, 0); }
+        prevGpButtons = [];
+        return;
+      }
+
+      const now = Date.now();
+      let lx = gp.axes[0] || 0;
+      let ly = -(gp.axes[1] || 0);
+      if (Math.abs(lx) < 0.16) lx = 0;
+      if (Math.abs(ly) < 0.16) ly = 0;
+
+      if (lx !== 0 || ly !== 0) {
+        const l = Math.max(-255, Math.min(255, Math.round((ly + lx) * currentPower)));
+        const r = Math.max(-255, Math.min(255, Math.round((ly - lx) * currentPower)));
+        if (now - lastGpDriveTx >= 120) {
+          lastGpDriveTx = now;
+          sendDrive(l, r);
+          gpDriveActive = true;
+        }
+      } else if (gpDriveActive) {
+        gpDriveActive = false;
+        sendDrive(0, 0);
+      }
+
+      // Analógico direito controla Pan/Tilt se rastreamento IA estiver desligado
+      if (!isTracking && now - lastGpServoTx >= 80) {
+        const rx = gp.axes[2] !== undefined && Math.abs(gp.axes[2]) > 0.15 ? gp.axes[2] : (gp.axes[3] || 0);
+        const ry = gp.axes[3] !== undefined && Math.abs(gp.axes[2]) > 0.15 ? gp.axes[3] : (gp.axes[4] || 0);
+        if (Math.abs(rx) > 0.18) {
+          lastGpServoTx = now;
+          panPos = Math.max(20, Math.min(160, Math.round(panPos - rx * 4)));
+          document.getElementById('sliderPan').value = panPos;
+          document.getElementById('val2').innerText = panPos;
+          sendServo(2, panPos);
+        }
+        if (Math.abs(ry) > 0.18) {
+          lastGpServoTx = now;
+          tiltPos = Math.max(35, Math.min(145, Math.round(tiltPos + ry * 4)));
+          document.getElementById('sliderTilt').value = tiltPos;
+          document.getElementById('val3').innerText = tiltPos;
+          sendServo(3, tiltPos);
+        }
+      }
+
+      // Botões Gamepad (A=0, B=1, X=2, Y=3, LB=4, RB=5, LT=6, RT=7, Select=8, Start=9)
+      const actions = [
+        () => { takeSnapshot(); runAction('pose_foto'); }, // A / Cross
+        () => sendStop(),                                 // B / Circle
+        () => runAction('acenar'),                        // X / Square
+        () => toggleTracking(),                           // Y / Triangle
+        () => sendServo(5, 145),                          // LB
+        () => sendServo(6, 145),                          // RB
+        () => playSound('curious'),                       // LT
+        () => playSound('horn'),                          // RT
+        () => toggleNatural(),                            // Select
+        () => playSound('walle'),                         // Start
+      ];
+      actions.forEach((fn, idx) => {
+        const pressed = Boolean(gp.buttons[idx] && gp.buttons[idx].pressed);
+        if (pressed && !prevGpButtons[idx]) fn();
+        prevGpButtons[idx] = pressed;
+      });
+    }, 75);
+
+    // =========================================================================
+    // 5. SONS, SERVOS, TELEMETRIA & TECLADO
+    // =========================================================================
+    function setVolume(val) {
+      const v = Number(val);
+      const valSpan = document.getElementById('volVal');
+      const boostInd = document.getElementById('boostIndicator');
+      valSpan.innerText = `${v}%`;
+      if (v > 100) {
+        valSpan.style.color = '#ef4444';
+        if (boostInd) {
+          const db = Math.round((v - 100) * 0.12);
+          boostInd.innerHTML = `🔥 <b>SUPER BOOST (+${db}dB):</b> Ganho por software ativo!`;
+          boostInd.style.color = '#f97316';
+        }
+      } else {
+        valSpan.style.color = '#f59e0b';
+        if (boostInd) {
+          boostInd.innerText = `Volume Normal ALSA (${v}%)`;
+          boostInd.style.color = '#10b981';
+        }
+      }
+      fetch(`/volume?val=${v}`).catch(() => {});
+    }
+
+    function loadSounds() {
+      fetch('/sounds_list')
+        .then(r => r.json())
+        .then(data => {
+          if (!data || !data.sounds) return;
+          const grid = document.getElementById('soundButtonsGrid');
+          if (!grid) return;
+          grid.innerHTML = '';
+          if (data.sounds.length === 0) {
+            grid.innerHTML = '<div style="grid-column: span 3; text-align:center; color:#94a3b8; font-size:11px; padding:14px; border:1px dashed #475569; border-radius:6px; background:#0f172a;">Nenhum áudio cadastrado no momento.<br>Adicione áudios colando um link do YouTube ou enviando arquivos MP3/WAV abaixo! 👇</div>';
+            return;
+          }
+          data.sounds.forEach(snd => {
+            const wrap = document.createElement('div');
+            wrap.style.display = 'flex';
+            wrap.style.gap = '3px';
+            wrap.style.alignItems = 'stretch';
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-sound';
+            btn.style.flex = '1';
+            btn.style.background = snd.color || '#0d9488';
+            btn.innerHTML = `${snd.emoji || '🎵'} ${snd.title}`;
+            btn.onclick = () => playSound(snd.id || snd.sid);
+
+            const del = document.createElement('button');
+            del.innerHTML = '✕';
+            del.title = 'Apagar este som';
+            del.style.padding = '0 6px';
+            del.style.background = 'rgba(239, 68, 68, 0.45)';
+            del.style.border = '1px solid #ef4444';
+            del.style.borderRadius = '6px';
+            del.style.color = '#fff';
+            del.style.fontSize = '11px';
+            del.style.fontWeight = 'bold';
+            del.style.cursor = 'pointer';
+            del.onclick = (e) => {
+              e.stopPropagation();
+              if (confirm(`Deseja apagar o som "${snd.title}"?`)) {
+                deleteSound(snd.id || snd.sid);
+              }
+            };
+
+            wrap.appendChild(btn);
+            wrap.appendChild(del);
+            grid.appendChild(wrap);
+          });
+        })
+        .catch(() => {});
+    }
+
+    function deleteSound(sid) {
+      fetch('/api/delete_sound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sid })
+      })
+      .then(r => r.json())
+      .then(() => loadSounds())
+      .catch(() => {});
+    }
+
+    function clearAllSounds() {
+      if (confirm('Deseja realmente apagar TODOS os arquivos de áudio do WALL-E?')) {
+        fetch('/api/clear_all_sounds', { method: 'POST' })
+          .then(r => r.json())
+          .then(() => {
+            alert('Todos os áudios foram apagados com sucesso!');
+            loadSounds();
+          })
+          .catch(() => {});
+      }
+    }
+
+    function toggleSoundDrawer() {
+      const d = document.getElementById('soundDrawer');
+      if (d) d.style.display = (d.style.display === 'none' || !d.style.display) ? 'block' : 'none';
+    }
+
+    function downloadFromYoutube() {
+      const url = document.getElementById('ytUrlInput').value.trim();
+      const name = document.getElementById('ytNameInput').value.trim();
+      const status = document.getElementById('ytStatus');
+      const btn = document.getElementById('btnYtDownload');
+      if (!url) {
+        status.innerText = '⚠️ Insira uma URL do YouTube.';
+        status.style.color = '#f87171';
+        return;
+      }
+      status.innerText = '⏳ Baixando e amplificando áudio no Raspberry Pi... Aguarde.';
+      status.style.color = '#38bdf8';
+      btn.disabled = true;
+
+      fetch('/api/download_youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url, name: name })
+      })
+      .then(r => r.json())
+      .then(res => {
+        btn.disabled = false;
+        if (res.status === 'ok') {
+          status.innerText = `✅ ${res.message}`;
+          status.style.color = '#4ade80';
+          document.getElementById('ytUrlInput').value = '';
+          document.getElementById('ytNameInput').value = '';
+          loadSounds();
+        } else {
+          status.innerText = `❌ ${res.message || 'Erro ao baixar'}`;
+          status.style.color = '#f87171';
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        status.innerText = '❌ Erro de conexão com o robô.';
+        status.style.color = '#f87171';
+      });
+    }
+
+    function uploadAudioFile() {
+      const fin = document.getElementById('fileAudioInput');
+      const status = document.getElementById('uploadStatus');
+      const btn = document.getElementById('btnUploadAudio');
+      if (!fin.files || !fin.files[0]) {
+        status.innerText = '⚠️ Escolha um arquivo de áudio.';
+        status.style.color = '#f87171';
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', fin.files[0]);
+      status.innerText = '⏳ Enviando e pré-amplificando áudio...';
+      status.style.color = '#38bdf8';
+      btn.disabled = true;
+
+      fetch('/api/upload_sound', {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(res => {
+        btn.disabled = false;
+        if (res.status === 'ok') {
+          status.innerText = `✅ ${res.message}`;
+          status.style.color = '#4ade80';
+          fin.value = '';
+          loadSounds();
+        } else {
+          status.innerText = `❌ ${res.message || 'Erro no envio'}`;
+          status.style.color = '#f87171';
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        status.innerText = '❌ Erro no envio.';
+        status.style.color = '#f87171';
+      });
+    }
+
+    function updateServoSpeed(val) {
+      const v = Number(val);
+      const lbl = document.getElementById('servoSpeedLabel');
+      let desc = 'Normal';
+      if (v <= 4) desc = 'Ultra Suave / Super Lento';
+      else if (v <= 7) desc = 'Suave / Orgânico';
+      else if (v <= 11) desc = 'Moderado';
+      else desc = 'Rápido';
+      if (lbl) lbl.innerText = `${desc} (${v})`;
+      fetch(`/servo_speed?val=${v}`).catch(() => {});
+    }
+
+    function testServo(id) {
+      const st = document.getElementById('servoTestStatus');
+      if (st) st.innerText = `⏳ Testando Servo ${id} (60° ↔ 120°)...`;
+      fetch(`/test_servo?id=${id}`)
+        .then(() => {
+          setTimeout(() => { if (st) st.innerText = `✅ Teste do Servo ${id} concluído. Mexeu?`; }, 1200);
+        })
+        .catch(() => { if (st) st.innerText = `❌ Erro de comunicação com o Nano`; });
+    }
+
+    function testAllServos() {
+      const st = document.getElementById('servoTestStatus');
+      if (st) st.innerText = `⏳ Iniciando varredura sequencial nos servos 0 a 6... Olhe para o robô!`;
+      fetch('/test_all_servos')
+        .then(() => {
+          setTimeout(() => { if (st) st.innerText = `✅ Varredura concluída. Verifique quais mexeram!`; }, 6500);
+        })
+        .catch(() => { if (st) st.innerText = `❌ Erro ao disparar varredura`; });
+    }
 
     function toggleTracking() {
       fetch('/toggle_tracking')
         .then(r => r.json())
-        .then(data => updateTrackingBtn(data.tracking));
+        .then(data => updateTrackingBtn(data.tracking))
+        .catch(() => {});
     }
 
     function updateTrackingBtn(active) {
+      isTracking = Boolean(active);
       const btn = document.getElementById('aiBtn');
       if (active) {
         btn.className = 'btn-ai ai-on';
-        btn.innerText = '👁️ Rastreamento de Rosto: ATIVO';
+        btn.innerText = '👁️ Rastreamento de Pessoas (IA): ATIVO';
       } else {
         btn.className = 'btn-ai ai-off';
-        btn.innerText = '👁️ Rastreamento de Rosto: DESATIVADO';
+        btn.innerText = '👁️ Rastreamento de Pessoas (IA): DESATIVADO';
       }
+    }
+
+    function toggleNatural() {
+      fetch('/toggle_natural')
+        .then(r => r.json())
+        .then(data => updateNaturalBtn(data.natural_mode))
+        .catch(() => {});
+    }
+
+    function updateNaturalBtn(active) {
+      const btn = document.getElementById('naturalBtn');
+      if (active) {
+        btn.className = 'btn-ai natural-on';
+        btn.innerText = '🎬 Modo Filmagem / Vida Natural: ATIVO';
+      } else {
+        btn.className = 'btn-ai ai-off';
+        btn.innerText = '🎬 Modo Filmagem / Vida Natural: DESATIVADO';
+      }
+    }
+
+    function toggleCamOpt(key) {
+      camState[key] = !camState[key];
+      fetch(`/camera_config?${key}=${camState[key]}`)
+        .then(r => r.json())
+        .then(syncCamButtons)
+        .catch(() => {});
+    }
+
+    function syncCamButtons(cfg) {
+      if (!cfg) return;
+      camState = cfg;
+      document.getElementById('btnHud').classList.toggle('active', Boolean(cfg.show_hud));
+      document.getElementById('btnFlip').classList.toggle('active', Boolean(cfg.flip_h));
+      document.getElementById('btnLight').classList.toggle('active', Boolean(cfg.enhance_light));
     }
 
     function powerOff() {
@@ -197,7 +1348,44 @@
       }
     }
 
-    // Telemetria em tempo real
+    // Teclado PC
+    const keyMap = {
+      w: [1, 1], arrowup: [1, 1],
+      s: [-1, -1], arrowdown: [-1, -1],
+      a: [-1, 1], arrowleft: [-1, 1],
+      d: [1, -1], arrowright: [1, -1]
+    };
+    let activeKeyMove = null;
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      const k = e.key.toLowerCase();
+      if (k === ' ') { e.preventDefault(); activeKeyMove = null; sendStop(); return; }
+      if (e.repeat) return;
+      if (keyMap[k]) {
+        e.preventDefault();
+        activeKeyMove = k;
+        const [dl, dr] = keyMap[k];
+        startDrive(dl, dr);
+      } else if (k === 'f') {
+        takeSnapshot();
+        runAction('pose_foto');
+      } else if (k === 't') {
+        toggleTracking();
+      } else if (k === 'n') {
+        toggleNatural();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === activeKeyMove) {
+        activeKeyMove = null;
+        stopDrive();
+      }
+    });
+
+    // Telemetria Periódica
     setInterval(() => {
       fetch('/telemetry')
         .then(r => r.json())
@@ -216,8 +1404,36 @@
           if (data.fps !== undefined) {
             document.getElementById('fpsInfo').innerText = `FPS: ${data.fps.toFixed(1)}`;
           }
-          // Sincroniza sliders de Pan/Tilt se rastreamento estiver ativo
+          if (data.target_type) {
+            document.getElementById('targetInfo').innerText = `ALVO: ${data.target_type}`;
+          }
+          if (data.pan !== undefined && data.tilt !== undefined) {
+            document.getElementById('panTiltInfo').innerText = `PAN: ${data.pan}° | TILT: ${data.tilt}°`;
+          }
+          if (data.photos_count !== undefined) {
+            document.getElementById('photoCount').innerText = data.photos_count;
+          }
+          document.getElementById('actionStatus').innerText = data.active_action ? `▶ ${data.active_action.toUpperCase()}` : '';
+          updateTrackingBtn(data.face_tracking);
+          updateNaturalBtn(data.natural_mode);
+          if (data.servo_speed !== undefined) {
+            const spdSlider = document.getElementById('servoSpeedSlider');
+            if (spdSlider && document.activeElement !== spdSlider) {
+              spdSlider.value = data.servo_speed;
+              const lbl = document.getElementById('servoSpeedLabel');
+              let desc = 'Normal';
+              if (data.servo_speed <= 4) desc = 'Ultra Suave / Super Lento';
+              else if (data.servo_speed <= 7) desc = 'Suave / Orgânico';
+              else if (data.servo_speed <= 11) desc = 'Moderado';
+              else desc = 'Rápido';
+              if (lbl) lbl.innerText = `${desc} (${data.servo_speed})`;
+            }
+          }
+          if (data.camera_config) syncCamButtons(data.camera_config);
+          gamepadPiConnected = Boolean(data.gamepad_pi);
           if (data.face_tracking) {
+            panPos = data.pan;
+            tiltPos = data.tilt;
             document.getElementById('sliderPan').value = data.pan;
             document.getElementById('val2').innerText = data.pan;
             document.getElementById('sliderTilt').value = data.tilt;
@@ -225,7 +1441,83 @@
           }
         })
         .catch(() => {});
-    }, 1200);
+    }, 1000);
+
+    // Inicialização
+    loadSounds();
+    refreshPhotos();
+
+    // =========================================================================
+    // 6. PROGRESSIVE WEB APP (PWA), WAKE LOCK & FULLSCREEN COCKPIT
+    // =========================================================================
+    let deferredPrompt = null;
+    let wakeLock = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[PWA] Service Worker registrado no escopo:', reg.scope))
+          .catch(err => console.log('[PWA] Erro ao registrar Service Worker:', err));
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('btnInstallPwa');
+      if (btn) btn.style.display = 'inline-block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      const btn = document.getElementById('btnInstallPwa');
+      if (btn) btn.style.display = 'none';
+      console.log('[PWA] WALL-E App instalado com sucesso no dispositivo!');
+    });
+
+    function installPwa() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            console.log('[PWA] Usuário aceitou a instalação.');
+          }
+          deferredPrompt = null;
+          const btn = document.getElementById('btnInstallPwa');
+          if (btn) btn.style.display = 'none';
+        });
+      } else {
+        alert("📲 Para instalar o App WALL-E no seu celular:\n\n• No Android/Chrome: Toque nos 3 pontinhos do navegador e selecione 'Instalar aplicativo' ou 'Adicionar à tela inicial'.\n\n• No iPhone/Safari: Toque no ícone de Compartilhar (quadrado com seta para cima) e escolha 'Adicionar à Tela de Início' (+).");
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // Wake Lock: Impede que a tela do celular apague enquanto você pilota
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[PWA] Wake Lock ativo: a tela permanecerá ligada durante a pilotagem.');
+        } catch (err) {
+          console.log('[PWA] Wake Lock indisponível:', err);
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    });
+
+    requestWakeLock();
   </script>
 </body>
 </html>
